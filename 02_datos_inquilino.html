@@ -1,0 +1,153 @@
+import { useState } from "react";
+
+// ============================================================
+// CONTRACT 360 › COBRANZA › DATOS DE FACTURACIÓN (Inquilino) v2 · Colossu
+// Completado con TODO lo que la Vista Prefacturación necesita.
+// Origen de cada dato: CSF (azul) · Contrato (ámbar) · Editable (teal) · Sistema (gris)
+// ============================================================
+
+const FONT = "'DM Sans', -apple-system, system-ui, sans-serif";
+
+const TABS_360 = ["Información General", "Histórico", "Cobranza", "Documentos"];
+const SUB_COBRANZA = ["Línea de tiempo", "Cargos", "Ventas", "Datos de facturación"];
+
+const CSF_ST = {
+  valid:   { label: "Vigente",    bg: "#ECFDF5", text: "#065F46", dot: "#10B981" },
+  expiring:{ label: "Por vencer", bg: "#FFFBEB", text: "#92400E", dot: "#F59E0B" },
+  missing: { label: "Faltante",   bg: "#FEF2F2", text: "#991B1B", dot: "#EF4444" },
+};
+const SRC = {
+  csf:      { label: "CSF",      bg: "#EFF6FF", text: "#1D4ED8", border: "#BFDBFE" },
+  contrato: { label: "Contrato", bg: "#FFFBEB", text: "#B45309", border: "#FDE68A" },
+  editable: { label: "Editable", bg: "#F0FDFA", text: "#0F766E", border: "#99F6E4" },
+  sistema:  { label: "Sistema",  bg: "#F3F4F6", text: "#6B7280", border: "#E5E7EB" },
+};
+
+const I = {
+  contractId: "CT-2025-RT-001", espacio: "Torre Fibonacci · Local PB-02",
+  razon: "Café Polanco SA de CV", rfc: "CPO210304K23",
+  regimen: "601 · General de Ley Personas Morales", cp: "11560", tipo: "Persona Moral",
+  csf: { status: "valid", file: "CSF_CafePolanco_2026.pdf", uploaded: "12 ene 2026", source: "OCR confirmado", otrosContratos: 1 },
+  // emisor que el contrato fijó
+  emisorRazon: "Inmobiliaria Bonacci SA de CV", emisorRfc: "IBO190315KL8",
+  // config de facturación (Vista Prefacturación)
+  usoCfdi: "G03 · Gastos en general",
+  efecto: "I · Ingreso",
+  emailFact: "facturas@cafepolanco.mx",
+  metodoPago: "PUE · Una exhibición",
+  formaPago: "03 · Transferencia electrónica",
+  moneda: "MXN",
+  condicionesPago: "Pago dentro de los primeros 5 días del mes",
+  regimenAmbas: "PM → PM · sin retención",
+};
+
+function Badge({ src }) {
+  const s = SRC[src];
+  return <span style={{ fontSize: 8.5, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: s.bg, color: s.text, border: `1px solid ${s.border}`, textTransform: "uppercase", letterSpacing: 0.3, whiteSpace: "nowrap" }}>{s.label}</span>;
+}
+function CsfChip({ status }) {
+  const s = CSF_ST[status];
+  return <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: 20, background: s.bg, fontSize: 10.5, fontWeight: 600, color: s.text }}><span style={{ width: 5, height: 5, borderRadius: "50%", background: s.dot }} />{s.label}</span>;
+}
+function Row({ label, src, children }) {
+  return (
+    <div style={{ marginBottom: 13 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+        <span style={{ fontSize: 9, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</span>
+        <Badge src={src} />
+      </div>
+      {children}
+    </div>
+  );
+}
+function ro(value) { return <div style={{ fontSize: 12, color: "#1F2937", fontWeight: 500, padding: "3px 0" }}>{value}</div>; }
+function inp(value) { return <input defaultValue={value} style={{ width: "100%", padding: "8px 10px", border: "1.5px solid #99F6E4", borderRadius: 7, fontSize: 12, fontFamily: FONT, outline: "none", background: "#F0FDFA", color: "#134E4A", boxSizing: "border-box" }} />; }
+function sel(value, options) { return <select defaultValue={value} style={{ width: "100%", padding: "8px 10px", border: "1.5px solid #99F6E4", borderRadius: 7, fontSize: 12, fontFamily: FONT, outline: "none", background: "#F0FDFA", color: "#134E4A", appearance: "none", boxSizing: "border-box" }}>{options.map((o) => <option key={o}>{o}</option>)}</select>; }
+
+function Card({ title, children, right }) {
+  return (
+    <div style={{ border: "1px solid #ECECEE", borderRadius: 12, padding: "18px 20px", background: "white" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: "#0F4F47", textTransform: "uppercase", letterSpacing: 0.5 }}>{title}</div>
+        {right}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+export default function DatosFacturacionInquilinoV2() {
+  const [sub, setSub] = useState("Datos de facturación");
+
+  return (
+    <div style={{ fontFamily: FONT, background: "#FAFAFB", minHeight: "100vh", padding: "24px 28px", color: "#1F2937" }}>
+      <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Contratos · <span style={{ color: "#B45309", fontWeight: 600 }}>{I.contractId}</span></div>
+      <h1 style={{ fontSize: 21, fontWeight: 700, color: "#0F4F47", margin: 0 }}>{I.razon}</h1>
+      <div style={{ fontSize: 12, color: "#6B7280", marginTop: 3 }}>{I.espacio} · {I.rfc}</div>
+
+      <div style={{ display: "flex", gap: 24, marginTop: 18, borderBottom: "1px solid #ECECEE" }}>
+        {TABS_360.map((t) => (
+          <div key={t} style={{ paddingBottom: 10, fontSize: 13, fontWeight: 600, color: t === "Cobranza" ? "#0F4F47" : "#9CA3AF", borderBottom: t === "Cobranza" ? "2px solid #14B8A6" : "2px solid transparent", cursor: "pointer" }}>{t}</div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 6, marginTop: 16, flexWrap: "wrap" }}>
+        {SUB_COBRANZA.map((s) => (
+          <button key={s} onClick={() => setSub(s)} style={{ padding: "6px 13px", borderRadius: 8, border: sub === s ? "1.5px solid #14B8A6" : "1px solid #E5E7EB", background: sub === s ? "#F0FDFA" : "white", fontSize: 11.5, fontWeight: 600, color: sub === s ? "#0F766E" : "#6B7280", cursor: "pointer", fontFamily: FONT }}>{s}</button>
+        ))}
+      </div>
+
+      {sub === "Datos de facturación" ? (
+        <div style={{ marginTop: 22, maxWidth: 920 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+
+            {/* CSF del inquilino */}
+            <Card title="Constancia fiscal del inquilino" right={<CsfChip status={I.csf.status} />}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 14px", padding: "12px 14px", background: "#FAFAFB", borderRadius: 9, marginBottom: 14 }}>
+                <div><div style={{ fontSize: 8.5, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase" }}>Régimen</div><div style={{ fontSize: 11, color: "#1F2937", marginTop: 1 }}>{I.regimen}</div></div>
+                <div><div style={{ fontSize: 8.5, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase" }}>Código postal</div><div style={{ fontSize: 11, color: "#1F2937", marginTop: 1 }}>{I.cp}</div></div>
+                <div><div style={{ fontSize: 8.5, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase" }}>Tipo persona</div><div style={{ fontSize: 11, color: "#1F2937", marginTop: 1 }}>{I.tipo}</div></div>
+                <div><div style={{ fontSize: 8.5, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase" }}>Aplica a</div><div style={{ fontSize: 11, color: "#1F2937", marginTop: 1 }}>{I.csf.otrosContratos + 1} contratos</div></div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: "1px solid #ECECEE", borderRadius: 9 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 7, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>📄</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: "#1F2937", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{I.csf.file}</div>
+                  <div style={{ fontSize: 9.5, color: "#9CA3AF" }}>Subida {I.csf.uploaded} · {I.csf.source}</div>
+                </div>
+                <button style={{ padding: "5px 9px", borderRadius: 6, border: "1px solid #E5E7EB", background: "white", fontSize: 10, fontWeight: 600, color: "#6B7280", cursor: "pointer", fontFamily: FONT }}>Ver</button>
+              </div>
+              <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 10 }}>Guardada a nivel de {I.razon}. Actualizarla afecta todos sus contratos.</div>
+              <button style={{ width: "100%", marginTop: 12, padding: "10px", borderRadius: 8, border: "1px solid #115E59", background: "white", color: "#115E59", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: FONT }}>↻ Actualizar CSF (con OCR)</button>
+
+              <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #F3F4F6" }}>
+                <Row label="Emisor de este contrato" src="contrato">{ro(`${I.emisorRazon} · ${I.emisorRfc}`)}</Row>
+                <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: -8 }}>Definido al crear el contrato. No editable aquí.</div>
+              </div>
+            </Card>
+
+            {/* Configuración de facturación completa */}
+            <Card title="Cómo se factura a este inquilino">
+              <Row label="Uso de CFDI por defecto" src="editable">{sel(I.usoCfdi, ["G01 · Adquisición de mercancías", "G03 · Gastos en general", "P01 · Por definir"])}</Row>
+              <Row label="Efecto / tipo de comprobante" src="editable">{sel(I.efecto, ["I · Ingreso", "E · Egreso (nota de crédito)", "P · Pago"])}</Row>
+              <Row label="Correo para envío de factura" src="editable">{inp(I.emailFact)}</Row>
+              <Row label="Método de pago habitual" src="editable">{sel(I.metodoPago, ["PUE · Una exhibición", "PPD · Parcialidades o diferido"])}</Row>
+              <Row label="Forma de pago habitual" src="editable">{sel(I.formaPago, ["01 · Efectivo", "03 · Transferencia electrónica", "99 · Por definir"])}</Row>
+              <Row label="Moneda" src="contrato">{ro(I.moneda)}</Row>
+              <Row label="Régimen de ambas partes" src="sistema">{ro(I.regimenAmbas)}</Row>
+              <Row label="Condiciones de pago" src="contrato">{ro(I.condicionesPago)}</Row>
+            </Card>
+          </div>
+
+          <div style={{ fontSize: 10.5, color: "#0F766E", marginTop: 16, lineHeight: 1.5, background: "#F0FDFA", border: "1px solid #99F6E4", borderRadius: 8, padding: "10px 13px", maxWidth: 920 }}>
+            Estos valores pre-llenan la <strong>prefacturación</strong> de este inquilino. Las claves de producto/servicio y unidad se asignan por tipo de cargo automáticamente (Sistema). Todo es ajustable por factura antes de timbrar.
+          </div>
+
+          <button style={{ marginTop: 16, padding: "10px 20px", borderRadius: 8, border: "none", background: "#115E59", color: "white", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: FONT }}>Guardar datos de facturación</button>
+        </div>
+      ) : (
+        <div style={{ marginTop: 30, fontSize: 13, color: "#9CA3AF" }}>Sub-sección "{sub}" (fuera del foco de este prototipo)</div>
+      )}
+    </div>
+  );
+}

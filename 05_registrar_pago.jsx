@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ajustes · Facturación (Emisor) · Colossu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'DM Sans', sans-serif; background: #FAFAFB; }
+  .topbar { position: sticky; top: 0; z-index: 100; background: white; border-bottom: 1px solid #ECECEE; padding: 12px 20px; display: flex; align-items: center; gap: 14px; }
+  .topbar a { font-size: 13px; font-weight: 600; color: #0F766E; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .topbar .crumb { font-size: 12px; color: #9CA3AF; }
+  .topbar .badge { margin-left: auto; font-size: 10px; font-weight: 700; color: #B45309; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 5px; padding: 3px 9px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="../index.html">← Volver al flujo</a>
+  <span class="crumb">Conector de Facturación · Ajustes · Facturación (Emisor)</span>
+  <span class="badge">Prototipo</span>
+</div>
+<div id="root"></div>
+<script>
+const { useState, useMemo, useReducer, useEffect, useRef } = React;
+// ============================================================
+// AJUSTES › FACTURACIÓN (Emisores) v3 · Colossu
+// Formato simple: una tarjeta detallada por razón social (CSF + CSD),
+// apiladas, con botón "Agregar otra razón social" al final.
+// El contrato define qué razón social emite cada factura.
+// ============================================================
+
+const FONT = "'DM Sans', -apple-system, system-ui, sans-serif";
+const TABS = [{
+  id: "perfil",
+  label: "Perfil",
+  icon: "👤"
+}, {
+  id: "pass",
+  label: "Contraseña",
+  icon: "🔒"
+}, {
+  id: "apar",
+  label: "Apariencia",
+  icon: "🎨"
+}, {
+  id: "idioma",
+  label: "Idioma",
+  icon: "🌐"
+}, {
+  id: "mcp",
+  label: "MCP",
+  icon: "⚡"
+}, {
+  id: "fact",
+  label: "Facturación",
+  icon: "🧾"
+}, {
+  id: "notif",
+  label: "Notificaciones",
+  icon: "🔔"
+}];
+const ST = {
+  valid: {
+    label: "Lista para facturar",
+    bg: "#ECFDF5",
+    text: "#065F46",
+    dot: "#10B981"
+  },
+  expiring: {
+    label: "Certificado por vencer",
+    bg: "#FFFBEB",
+    text: "#92400E",
+    dot: "#F59E0B"
+  },
+  incomplete: {
+    label: "Incompleta",
+    bg: "#FEF2F2",
+    text: "#991B1B",
+    dot: "#EF4444"
+  }
+};
+const DOC = {
+  ok: {
+    bg: "#ECFDF5",
+    color: "#10B981",
+    icon: "✓"
+  },
+  warn: {
+    bg: "#FFFBEB",
+    color: "#F59E0B",
+    icon: "!"
+  },
+  missing: {
+    bg: "#FEF2F2",
+    color: "#EF4444",
+    icon: "×"
+  }
+};
+const EMISORES = [{
+  id: "em1",
+  razon: "Inmobiliaria Bonacci SA de CV",
+  rfc: "IBO190315KL8",
+  regimen: "601 · General de Ley PM",
+  cp: "06700",
+  tipo: "Persona Moral",
+  status: "valid",
+  contratos: 9,
+  csf: {
+    state: "ok",
+    file: "CSF_Bonacci_2026.pdf",
+    info: "subida 12 ene 2026"
+  },
+  cer: {
+    state: "ok",
+    info: "No. serie 00001000000512345678 · vigencia hasta 14 mar 2028"
+  },
+  key: {
+    state: "ok",
+    info: "CSD_Bonacci.key · subida 12 ene 2026"
+  },
+  pass: {
+    state: "ok",
+    info: "Configurada y cifrada"
+  }
+}, {
+  id: "em2",
+  razon: "Desarrollos Pisa SA de CV",
+  rfc: "DPI200612MN4",
+  regimen: "601 · General de Ley PM",
+  cp: "06700",
+  tipo: "Persona Moral",
+  status: "expiring",
+  contratos: 5,
+  csf: {
+    state: "ok",
+    file: "CSF_Pisa_2025.pdf",
+    info: "subida 03 mar 2025"
+  },
+  cer: {
+    state: "warn",
+    info: "No. serie 00001000000598765432 · vence en 23 días"
+  },
+  key: {
+    state: "ok",
+    info: "CSD_Pisa.key · subida 03 mar 2025"
+  },
+  pass: {
+    state: "ok",
+    info: "Configurada y cifrada"
+  }
+}];
+function StatusChip({
+  status
+}) {
+  const s = ST[status];
+  return /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4,
+      padding: "3px 9px",
+      borderRadius: 20,
+      background: s.bg,
+      fontSize: 10.5,
+      fontWeight: 600,
+      color: s.text,
+      whiteSpace: "nowrap"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 5,
+      height: 5,
+      borderRadius: "50%",
+      background: s.dot
+    }
+  }), s.label);
+}
+function DocRow({
+  icon,
+  title,
+  doc,
+  action,
+  sensitive
+}) {
+  const d = DOC[doc.state];
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      padding: "12px 14px",
+      border: "1px solid #ECECEE",
+      borderRadius: 10,
+      background: "white"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 34,
+      height: 34,
+      borderRadius: 8,
+      background: sensitive ? "#FEF2F2" : "#F0FDFA",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 15,
+      flexShrink: 0
+    }
+  }, icon), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12.5,
+      fontWeight: 600,
+      color: "#1F2937"
+    }
+  }, title), /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 15,
+      height: 15,
+      borderRadius: "50%",
+      background: d.bg,
+      color: d.color,
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 9,
+      fontWeight: 800
+    }
+  }, d.icon)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#9CA3AF",
+      fontFamily: doc.file ? "inherit" : "monospace",
+      marginTop: 2
+    }
+  }, doc.file ? `${doc.file} · ${doc.info}` : doc.info)), /*#__PURE__*/React.createElement("button", {
+    style: {
+      padding: "6px 12px",
+      borderRadius: 7,
+      border: doc.state === "missing" ? "none" : "1px solid #E5E7EB",
+      background: doc.state === "missing" ? "#115E59" : "white",
+      color: doc.state === "missing" ? "white" : "#374151",
+      fontSize: 11,
+      fontWeight: 600,
+      cursor: "pointer",
+      fontFamily: FONT,
+      whiteSpace: "nowrap"
+    }
+  }, action));
+}
+function EmisorCard({
+  e
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      border: "1px solid #ECECEE",
+      borderRadius: 12,
+      padding: "20px 22px",
+      background: "white"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 15,
+      fontWeight: 700,
+      color: "#0F4F47"
+    }
+  }, e.razon), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#6B7280",
+      marginTop: 2
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "monospace"
+    }
+  }, e.rfc), " · ", e.regimen, " · CP ", e.cp), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10.5,
+      color: "#9CA3AF",
+      marginTop: 2
+    }
+  }, "Emite en ", e.contratos, " contrato", e.contratos !== 1 ? "s" : "")), /*#__PURE__*/React.createElement(StatusChip, {
+    status: e.status
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      fontWeight: 800,
+      color: "#0F4F47",
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginBottom: 10
+    }
+  }, "Constancia de Situación Fiscal"), /*#__PURE__*/React.createElement(DocRow, {
+    icon: "📄",
+    title: "CSF del propietario",
+    doc: e.csf,
+    action: "↻ Actualizar"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      margin: "18px 0 10px"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      fontWeight: 800,
+      color: "#0F4F47",
+      textTransform: "uppercase",
+      letterSpacing: 0.5
+    }
+  }, "Certificado de Sello Digital (CSD)"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 9,
+      fontWeight: 700,
+      color: "#991B1B",
+      background: "#FEF2F2",
+      border: "1px solid #FECACA",
+      borderRadius: 4,
+      padding: "1px 6px",
+      textTransform: "uppercase"
+    }
+  }, "Sensible")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement(DocRow, {
+    icon: "📜",
+    title: "Certificado (.cer)",
+    doc: e.cer,
+    action: "↻ Reemplazar",
+    sensitive: true
+  }), /*#__PURE__*/React.createElement(DocRow, {
+    icon: "🔑",
+    title: "Llave privada (.key)",
+    doc: e.key,
+    action: "↻ Reemplazar",
+    sensitive: true
+  }), /*#__PURE__*/React.createElement(DocRow, {
+    icon: "🔐",
+    title: "Contraseña de la llave",
+    doc: e.pass,
+    action: "Cambiar",
+    sensitive: true
+  })), e.status === "expiring" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10.5,
+      color: "#92400E",
+      background: "#FFFBEB",
+      border: "1px solid #FDE68A",
+      borderRadius: 7,
+      padding: "8px 11px",
+      marginTop: 12
+    }
+  }, "⏰ El certificado vence pronto. Reemplázalo para no interrumpir la facturación de esta razón social."));
+}
+function FacturacionTab() {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      maxWidth: 720
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("h2", {
+    style: {
+      fontSize: 16,
+      fontWeight: 700,
+      color: "#0F4F47",
+      margin: 0
+    }
+  }, "Información de facturación"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#6B7280",
+      marginTop: 3
+    }
+  }, "Administra las razones sociales con las que emites CFDI. Cada contrato define cuál de ellas factura.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 16,
+      marginTop: 20
+    }
+  }, EMISORES.map(e => /*#__PURE__*/React.createElement(EmisorCard, {
+    key: e.id,
+    e: e
+  })), /*#__PURE__*/React.createElement("button", {
+    style: {
+      padding: "16px",
+      borderRadius: 12,
+      border: "1.5px dashed #99F6E4",
+      background: "#F0FDFA",
+      color: "#0F766E",
+      fontSize: 13,
+      fontWeight: 700,
+      cursor: "pointer",
+      fontFamily: FONT,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 16
+    }
+  }, "+"), " Agregar otra razón social")));
+}
+function AjustesFacturacionV3() {
+  const [tab, setTab] = useState("fact");
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: FONT,
+      background: "white",
+      minHeight: "100vh",
+      padding: "24px 28px",
+      color: "#1F2937"
+    }
+  }, /*#__PURE__*/React.createElement("h1", {
+    style: {
+      fontSize: 19,
+      fontWeight: 700,
+      color: "#111827",
+      margin: 0
+    }
+  }, "Ajustes"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#9CA3AF",
+      marginTop: 2
+    }
+  }, "Administra tu perfil y configuración de cuenta"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 4,
+      flexWrap: "wrap",
+      background: "#F3F4F6",
+      borderRadius: 9,
+      padding: 4,
+      marginTop: 16,
+      width: "fit-content"
+    }
+  }, TABS.map(t => /*#__PURE__*/React.createElement("button", {
+    key: t.id,
+    onClick: () => setTab(t.id),
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+      padding: "7px 13px",
+      borderRadius: 7,
+      border: "none",
+      background: tab === t.id ? "white" : "transparent",
+      color: tab === t.id ? "#111827" : "#6B7280",
+      fontSize: 12,
+      fontWeight: 600,
+      cursor: "pointer",
+      fontFamily: FONT,
+      boxShadow: tab === t.id ? "0 1px 2px rgba(0,0,0,0.06)" : "none"
+    }
+  }, /*#__PURE__*/React.createElement("span", null, t.icon), t.label))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 28
+    }
+  }, tab === "fact" ? /*#__PURE__*/React.createElement(FacturacionTab, null) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "#9CA3AF",
+      padding: "40px 0"
+    }
+  }, "Sección \"", TABS.find(t => t.id === tab)?.label, "\" (fuera del foco de este prototipo)")));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(AjustesFacturacionV3));
+</script>
+</body>
+</html>

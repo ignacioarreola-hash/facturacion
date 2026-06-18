@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conector de Facturación CFDI 4.0 · Colossu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --teal-700: #115E59; --teal-600: #0F766E; --teal-500: #14B8A6; --teal-50: #F0FDFA;
+    --ink: #0F4F47; --gray-900: #1F2937; --gray-500: #6B7280; --gray-400: #9CA3AF;
+    --border: #ECECEE; --bg: #FAFAFB; --amber-bg: #FFFBEB; --amber-border: #FDE68A; --amber-text: #B45309;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--gray-900); line-height: 1.5; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  header .kicker { font-size: 12px; font-weight: 600; color: var(--teal-500); text-transform: uppercase; letter-spacing: 1px; }
+  header h1 { font-family: 'DM Serif Display', serif; font-size: 40px; color: var(--ink); margin: 8px 0 6px; font-weight: 400; }
+  header p { font-size: 15px; color: var(--gray-500); max-width: 640px; }
+  .meta { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .meta span { font-size: 11px; font-weight: 600; padding: 5px 11px; border-radius: 20px; background: white; border: 1px solid var(--border); color: var(--gray-500); }
+  .meta .hl { background: var(--teal-50); border-color: #99F6E4; color: var(--teal-600); }
+
+  .stage { margin-top: 44px; }
+  .stage-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .stage-num { width: 30px; height: 30px; border-radius: 9px; background: var(--ink); color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; flex-shrink: 0; }
+  .stage-head h2 { font-size: 19px; color: var(--ink); font-weight: 700; }
+  .stage-head .sub { font-size: 12px; color: var(--gray-400); margin-left: 4px; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .card { display: block; text-decoration: none; color: inherit; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 20px; transition: all 0.16s ease; position: relative; overflow: hidden; }
+  .card.clickable:hover { border-color: var(--teal-500); box-shadow: 0 8px 24px rgba(17,94,89,0.10); transform: translateY(-2px); }
+  .card.soon { opacity: 0.7; }
+  .card .tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 5px; display: inline-block; margin-bottom: 10px; }
+  .tag.proto { background: var(--teal-50); color: var(--teal-600); border: 1px solid #99F6E4; }
+  .tag.doc { background: var(--amber-bg); color: var(--amber-text); border: 1px solid var(--amber-border); }
+  .tag.rfc { background: #F5F3FF; color: #6D28D9; border: 1px solid #DDD6FE; }
+  .card h3 { font-size: 16px; color: var(--ink); margin-bottom: 6px; font-weight: 700; }
+  .card p { font-size: 12.5px; color: var(--gray-500); }
+  .card .arrow { position: absolute; top: 20px; right: 20px; font-size: 16px; color: var(--teal-500); opacity: 0; transition: opacity 0.16s; }
+  .card.clickable:hover .arrow { opacity: 1; }
+  .card .actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .card .actions span { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 5px; background: var(--bg); border: 1px solid var(--border); color: var(--gray-500); }
+
+  .connector { display: flex; justify-content: center; padding: 10px 0; }
+  .connector::before { content: "↓"; font-size: 20px; color: #D1D5DB; }
+
+  footer { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 12px; color: var(--gray-400); }
+  footer a { color: var(--teal-600); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">Colossu · Pod-SaaS · Cobranza</div>
+    <h1>Conector de Facturación CFDI 4.0</h1>
+    <p>Flujo completo del ciclo fiscal de arrendamiento, conectado a un PAC (Fiscalapi). Cada paso es clickeable: ábrelo para ver el prototipo de esa pantalla. Colossu nunca timbra — captura el dato y el PAC sella ante el SAT.</p>
+    <div class="meta">
+      <span class="hl">1 cargo = 1 CFDI</span>
+      <span>Fiscalapi (PAC)</span>
+      <span>Saldo PPD en Colossu</span>
+      <span>CSF a nivel entidad</span>
+      <span>Multi-razón social</span>
+    </div>
+  </header>
+
+  <!-- ETAPA 1 -->
+  <section class="stage">
+    <div class="stage-head">
+      <div class="stage-num">0</div>
+      <h2>Configuración fiscal</h2>
+      <span class="sub">se hace una vez · onboarding</span>
+    </div>
+    <div class="cards">
+      <a class="card clickable" href="prototipos/01_ajustes_emisor.html">
+        <span class="arrow">↗</span>
+        <span class="tag proto">Prototipo · Ajustes</span>
+        <h3>Facturación del emisor</h3>
+        <p>El propietario configura sus razones sociales (multi-RFC), su CSF y su CSD (.cer/.key/contraseña). Lo que habilita timbrar. El contrato define cuál emite.</p>
+        <div class="actions"><span>CSF vía OCR</span><span>CSD al PAC</span><span>+ razón social</span></div>
+      </a>
+      <a class="card clickable" href="prototipos/02_datos_inquilino.html">
+        <span class="arrow">↗</span>
+        <span class="tag proto">Prototipo · Contract 360</span>
+        <h3>Datos de facturación del inquilino</h3>
+        <p>CSF del inquilino (a nivel entidad) + cómo se le factura: uso CFDI, método/forma de pago, moneda. Pre-llena la prefacturación.</p>
+        <div class="actions"><span>CSF entidad</span><span>config de cobro</span></div>
+      </a>
+      <a class="card clickable" href="prototipos/06_seccion_csf.html">
+        <span class="arrow">↗</span>
+        <span class="tag proto">Prototipo · Contrato</span>
+        <h3>Sección CSF (acceso desde contrato)</h3>
+        <p>Vista alterna: gestión de las CSF de receptor y emisor accedida desde el contrato, con carga por OCR y estados de vigencia.</p>
+        <div class="actions"><span>OCR</span><span>vencimientos</span></div>
+      </a>
+    </div>
+  </section>
+
+  <div class="connector"></div>
+
+  <!-- ETAPA 2 -->
+  <section class="stage">
+    <div class="stage-head">
+      <div class="stage-num">1</div>
+      <h2>Prefacturación</h2>
+      <span class="sub">día x-1 · revisión antes de timbrar</span>
+    </div>
+    <div class="cards">
+      <a class="card clickable" href="prototipos/03_prefacturacion.html">
+        <span class="arrow">↗</span>
+        <span class="tag proto">Prototipo</span>
+        <h3>Prefacturación (tabla maestra)</h3>
+        <p>Un cargo por fila (renta, mantenimiento, renta variable, servicios, penalización), cada uno con enlace a su contrato. Editar, excluir, validar antes del timbrado del día x.</p>
+        <div class="actions"><span>1 cargo = 1 CFDI</span><span>validación 69-B/CP</span><span>excluir/condonar</span></div>
+      </a>
+    </div>
+  </section>
+
+  <div class="connector"></div>
+
+  <!-- ETAPA 3 -->
+  <section class="stage">
+    <div class="stage-head">
+      <div class="stage-num">2</div>
+      <h2>Emisión y postfactura</h2>
+      <span class="sub">día x · timbrado vía PAC + todas las acciones</span>
+    </div>
+    <div class="cards">
+      <a class="card clickable" href="prototipos/04_facturas_emitidas.html">
+        <span class="arrow">↗</span>
+        <span class="tag proto">Prototipo · Hub</span>
+        <h3>Facturas emitidas</h3>
+        <p>El centro de operación post-emisión. Acciones directas en cada fila: descargar PDF/XML, enviar al inquilino, emitir complemento de pago (REP), cancelar/sustituir, nota de crédito.</p>
+        <div class="actions"><span>PDF/XML</span><span>Enviar</span><span>Emitir REP</span><span>Cancelar</span><span>Nota de crédito</span></div>
+      </a>
+      <a class="card clickable" href="prototipos/05_registrar_pago.html">
+        <span class="arrow">↗</span>
+        <span class="tag proto">Prototipo · Modal</span>
+        <h3>Registrar pago → REP</h3>
+        <p>Al cobrar una factura PPD: capturas cuánto te pagaron, forma de pago real y referencia. El saldo insoluto lo calcula Colossu y se prepara el complemento.</p>
+        <div class="actions"><span>captura el pago</span><span>jala catálogo SAT</span><span>calcula saldo</span></div>
+      </a>
+    </div>
+  </section>
+
+  <div class="connector"></div>
+
+  <!-- DOCUMENTO RFC -->
+  <section class="stage">
+    <div class="stage-head">
+      <div class="stage-num">★</div>
+      <h2>Documentación</h2>
+      <span class="sub">el "qué" para el equipo</span>
+    </div>
+    <div class="cards">
+      <a class="card clickable" href="RFC.md">
+        <span class="arrow">↗</span>
+        <span class="tag rfc">RFC · SWARCH</span>
+        <h3>RFC Conector de Facturación CFDI 4.0</h3>
+        <p>Documento completo: modelo de roles PAC vs Colossu, ciclo y disparadores, configuración, prefacturación, REP, cancelación, nota de crédito, decisiones binding, métricas y preguntas abiertas.</p>
+        <div class="actions"><span>para @gabriel + @dante</span></div>
+      </a>
+    </div>
+  </section>
+
+  <footer>
+    <p><strong>Cómo leer este flujo:</strong> Configuración (paso 0) habilita todo. Luego cada mes: los cargos generan la prefacturación (día x-1), se emiten las facturas (día x), y desde Facturas emitidas se gestionan pagos, complementos, cancelaciones y notas de crédito.</p>
+    <p style="margin-top:10px;">Colossu · Pod-SaaS · Prototipos de revisión interna. Documentos timbrados se archivan en el PAC (5 años); Colossu guarda la referencia ligada al contrato.</p>
+  </footer>
+</div>
+</body>
+</html>
