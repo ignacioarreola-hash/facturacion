@@ -179,6 +179,41 @@ Preguntas abiertas para due diligence con el PAC (llamada pendiente):
 - Ambiente de pruebas que no consuma timbres (para QA).
 - Tiempo y rate limit de la API de recuperación de documentos.
 
+## 8.1 Loopholes y edge cases — reglas de correctness (Fase 1)
+
+Análisis de huecos lógicos y casos borde. Las siguientes reglas son **binding para Fase 1** porque afectan la correctitud fiscal o la integridad de datos:
+
+**Loopholes (integridad fiscal):**
+
+1. **Cancelación de factura con REP → cancelación en cadena.** No se puede cancelar una factura PPD que ya tiene complementos de pago timbrados sin cancelar primero esos REP. El sistema ejecuta la cancelación en cadena (primero los REP, luego la factura) como una sola acción del usuario.
+2. **Cancelación de REP individual.** El usuario puede cancelar un REP mal emitido (pago registrado por error) de forma individual. Al cancelarlo, el saldo insoluto de la factura se recalcula al alza automáticamente. Es el espejo de registrar un pago.
+3. **Nota de crédito validada contra Cobranza.** El monto de una NC se valida contra el saldo/monto vigente en Cobranza (el libro mayor), no contra el total facturado original. Evita acreditar más de lo que corresponde.
+4. **Candado de idempotencia.** Un cargo ya timbrado no vuelve a entrar a prefacturación. Previene la doble facturación de un mismo cargo por reintentos o re-ejecución del proceso.
+5. **Cambio de método PUE→PPD en prefactura.** Si el usuario cambia el método por excepción, el sistema mantiene consistencia: un cambio a PUE no deja un REP "fantasma" esperando, y un cambio a PPD habilita el flujo de complementos.
+6. **Cancelación + reversión de pago.** Al cancelar una factura, el cargo asociado vuelve a pendiente en Cobranza. Si el cargo tenía pago registrado, el pago se revierte vía la cancelación del REP en cadena, evitando estados inconsistentes (cargo pendiente con pago asociado).
+
+**Edge cases (Fase 1):**
+
+- **Receptor sin CSF o con CSF vencida:** se factura a público en general (RFC genérico). *(Asterisco: revisar tratamiento más adelante.)*
+- **Sobrepago / pago en exceso:** el excedente queda como saldo a favor del inquilino. **El usuario decide a qué cargo aplicarlo** (no automático), porque conoce la intención del pago. El REP del pago actual documenta solo hasta el saldo insoluto.
+- **Renta variable conocida después del corte:** el excedente se emite como **factura nueva**, no como ajuste de la RMG ya facturada.
+- **Contrato en USD:** el tipo de cambio (Banxico) se fija **al momento de timbrar**, no al prefacturar.
+- **Inquilino que cambia de RFC/régimen a mitad de contrato:** se valida contra la última versión del contrato. El cambio debe estar registrado en contratos históricos y validado. Las facturas previas conservan el RFC con que fueron emitidas (trazabilidad histórica).
+- **PAC o SAT caído el día x:** las prefacturas no timbradas se acumulan para reintento. *(La notificación proactiva al usuario es Fase 2.)*
+
+## 8.2 Diferido a Fase 2
+
+Las siguientes capacidades quedan fuera de Fase 1. Se documentan aquí porque el diseño de Fase 1 debe ser compatible con ellas:
+
+- **Registro de pago masivo / por lote:** un pago que cubre varias facturas de un inquilino, distribuido en un solo registro que genera múltiples REP. (Hoy: registro individual por factura.)
+- **Auto-emisión sin revisión:** toggle por cuenta o contrato para clientes recurrentes que no quieren revisar cada prefactura. (Hoy: semiautomático con revisión.)
+- **REP automático al conciliar banco (Syncfy):** cuando la conciliación bancaria detecta el pago, el REP se genera sin registro manual. Elimina el paso de registrar pago.
+- **Detección de anomalías en prefactura:** alertas tipo "esta renta subió 40% vs. el mes anterior" antes de timbrar.
+- **Recordatorios proactivos de CSF/CSD por vencer:** notificación con anticipación (ej. 30 días), no solo el bloqueo al vencer.
+- **Plantillas de cargo recurrente:** prefactura 95% automática para rentas fijas, el usuario solo confirma excepciones.
+- **Notificación de PAC/SAT caído:** avisar al usuario cuando el timbrado falla masivamente y las prefacturas se acumulan.
+- **Vista consolidada de pendientes:** centro de acción ("3 facturas sin enviar, 2 REP pendientes, 1 CSF por vencer").
+
 ## 9 Conclusion
 
 Es el momento correcto porque ya tenemos el activo difícil de replicar: el dato de cargos y pagos en Cobranza. El conector de facturación lo convierte en un cierre de ciclo que refuerza la indispensabilidad de Colossu, con un esfuerzo acotado (no construimos timbrado, conectamos eventos existentes a un PAC). Los prototipos del ciclo completo ya existen y validan el flujo de punta a punta; este RFC define el "qué" para que el equipo defina el "cómo".
