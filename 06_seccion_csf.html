@@ -1,23 +1,663 @@
-name: Deploy to GitHub Pages
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v4
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-      - id: deployment
-        uses: actions/deploy-pages@v4
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sección CSF (desde Contrato) · Colossu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'DM Sans', sans-serif; background: #FAFAFB; }
+  .topbar { position: sticky; top: 0; z-index: 100; background: white; border-bottom: 1px solid #ECECEE; padding: 12px 20px; display: flex; align-items: center; gap: 14px; }
+  .topbar a { font-size: 13px; font-weight: 600; color: #0F766E; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .topbar .crumb { font-size: 12px; color: #9CA3AF; }
+  .topbar .badge { margin-left: auto; font-size: 10px; font-weight: 700; color: #B45309; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 5px; padding: 3px 9px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="index.html">← Volver al flujo</a>
+  <span class="crumb">Conector de Facturación · Sección CSF (desde Contrato)</span>
+  <span class="badge">Prototipo</span>
+</div>
+<div id="root"></div>
+<script>
+const { useState, useMemo, useReducer, useEffect, useRef } = React;
+// ============================================================
+// SECCIÓN FISCAL DEL CONTRATO — Gestión de CSF v1 · Colossu
+// Acceso desde contrato · CSF guardada a nivel ENTIDAD
+// Carga con OCR (extrae RFC, régimen, CP, tipo persona) → confirmar
+// CSD se gestiona aparte en onboarding del emisor (no aquí)
+// Estética Attio-like: teal-700 #115E59, neutros, DM Sans
+// ============================================================
+
+const FONT = "'DM Sans', -apple-system, system-ui, sans-serif";
+
+// Estado de la CSF
+const CSF_ST = {
+  valid: {
+    label: "Vigente",
+    bg: "#ECFDF5",
+    text: "#065F46",
+    dot: "#10B981"
+  },
+  expiring: {
+    label: "Por vencer",
+    bg: "#FFFBEB",
+    text: "#92400E",
+    dot: "#F59E0B"
+  },
+  missing: {
+    label: "Faltante",
+    bg: "#FEF2F2",
+    text: "#991B1B",
+    dot: "#EF4444"
+  },
+  expired: {
+    label: "Vencida",
+    bg: "#FEF2F2",
+    text: "#991B1B",
+    dot: "#EF4444"
+  }
+};
+
+// Datos del contrato de ejemplo (Bonacci / Torre Fibonacci)
+const CONTRACT = {
+  id: "CT-2025-RT-001",
+  espacio: "Torre Fibonacci · Local PB-02",
+  receptor: {
+    rol: "Receptor (inquilino)",
+    razon: "Café Polanco SA de CV",
+    rfc: "CPO210304K23",
+    regimen: "601 · General de Ley Personas Morales",
+    cp: "11560",
+    tipo: "PM",
+    csf: {
+      status: "valid",
+      file: "CSF_CafePolanco_2026.pdf",
+      uploaded: "12 ene 2026",
+      source: "OCR confirmado",
+      otrosContratos: 1
+    }
+  },
+  emisor: {
+    rol: "Emisor (propietario)",
+    razon: "Inmobiliaria Bonacci SA de CV",
+    rfc: "IBO190315KL8",
+    regimen: "601 · General de Ley Personas Morales",
+    cp: "06700",
+    tipo: "PM",
+    csf: {
+      status: "expiring",
+      file: "CSF_Bonacci_2025.pdf",
+      uploaded: "03 mar 2025",
+      source: "OCR confirmado",
+      expiresIn: "23 días",
+      otrosContratos: 14
+    }
+  }
+};
+function CsfChip({
+  status
+}) {
+  const s = CSF_ST[status];
+  return /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4,
+      padding: "3px 9px",
+      borderRadius: 20,
+      background: s.bg,
+      fontSize: 10.5,
+      fontWeight: 600,
+      color: s.text,
+      whiteSpace: "nowrap"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 5,
+      height: 5,
+      borderRadius: "50%",
+      background: s.dot
+    }
+  }), s.label);
+}
+function SrcBadge({
+  children
+}) {
+  return /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 8.5,
+      fontWeight: 700,
+      padding: "1px 5px",
+      borderRadius: 4,
+      background: "#EFF6FF",
+      color: "#1D4ED8",
+      border: "1px solid #BFDBFE",
+      textTransform: "uppercase",
+      letterSpacing: 0.3
+    }
+  }, children);
+}
+
+// ── Modal de carga con OCR ──
+function UploadModal({
+  party,
+  onClose,
+  onConfirm
+}) {
+  const [stage, setStage] = useState("upload"); // upload | processing | confirm
+  const [ocr, setOcr] = useState(null);
+  const simulateOcr = () => {
+    setStage("processing");
+    setTimeout(() => {
+      setOcr({
+        rfc: party.rfc,
+        razon: party.razon,
+        regimen: party.regimen,
+        cp: party.cp,
+        tipo: party.tipo
+      });
+      setStage("confirm");
+    }, 1400);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    onClick: onClose,
+    style: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(15,23,42,0.35)",
+      zIndex: 60,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontFamily: FONT
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
+    style: {
+      width: 460,
+      background: "white",
+      borderRadius: 14,
+      boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "18px 22px",
+      borderBottom: "1px solid #ECECEE"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      fontWeight: 700,
+      color: "#9CA3AF",
+      textTransform: "uppercase",
+      letterSpacing: 0.5
+    }
+  }, party.rol), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 700,
+      color: "#0F4F47",
+      marginTop: 3
+    }
+  }, "Actualizar Constancia de Situación Fiscal"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#6B7280",
+      marginTop: 3
+    }
+  }, party.razon)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "22px"
+    }
+  }, stage === "upload" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    onClick: simulateOcr,
+    style: {
+      border: "2px dashed #99F6E4",
+      borderRadius: 12,
+      padding: "32px 20px",
+      textAlign: "center",
+      cursor: "pointer",
+      background: "#F0FDFA"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 30,
+      marginBottom: 8
+    }
+  }, "📄"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      color: "#0F766E"
+    }
+  }, "Arrastra o haz clic para subir la CSF"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#6B7280",
+      marginTop: 4
+    }
+  }, "PDF de la Constancia (SAT) · máx. 10 MB")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10.5,
+      color: "#9CA3AF",
+      marginTop: 12,
+      lineHeight: 1.5
+    }
+  }, "Se extraerán automáticamente RFC, razón social, régimen fiscal, código postal y tipo de persona. Tú confirmas antes de guardar.")), stage === "processing" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      padding: "30px 0"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 40,
+      height: 40,
+      border: "3px solid #E5E7EB",
+      borderTopColor: "#14B8A6",
+      borderRadius: "50%",
+      margin: "0 auto 16px",
+      animation: "spin 0.8s linear infinite"
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      color: "#0F4F47"
+    }
+  }, "Leyendo la constancia…"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#6B7280",
+      marginTop: 4
+    }
+  }, "Extrayendo datos fiscales con OCR"), /*#__PURE__*/React.createElement("style", null, `@keyframes spin{to{transform:rotate(360deg)}}`)), stage === "confirm" && ocr && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 14,
+      padding: "8px 12px",
+      background: "#ECFDF5",
+      borderRadius: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14
+    }
+  }, "✓"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11.5,
+      color: "#065F46",
+      fontWeight: 600
+    }
+  }, "Datos extraídos. Revisa y confirma antes de guardar.")), [["RFC", "rfc"], ["Razón social", "razon"], ["Régimen fiscal", "regimen"], ["Código postal", "cp"], ["Tipo de persona", "tipo"]].map(([label, key]) => /*#__PURE__*/React.createElement("div", {
+    key: key,
+    style: {
+      marginBottom: 11
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+      marginBottom: 3
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 9,
+      fontWeight: 700,
+      color: "#9CA3AF",
+      textTransform: "uppercase",
+      letterSpacing: 0.4
+    }
+  }, label), /*#__PURE__*/React.createElement(SrcBadge, null, "OCR")), /*#__PURE__*/React.createElement("input", {
+    defaultValue: ocr[key],
+    style: {
+      width: "100%",
+      padding: "7px 9px",
+      border: "1.5px solid #99F6E4",
+      borderRadius: 7,
+      fontSize: 12,
+      fontFamily: FONT,
+      outline: "none",
+      background: "#F0FDFA",
+      color: "#134E4A",
+      boxSizing: "border-box"
+    }
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10.5,
+      color: "#92400E",
+      background: "#FFFBEB",
+      border: "1px solid #FDE68A",
+      borderRadius: 7,
+      padding: "8px 11px",
+      marginTop: 6,
+      lineHeight: 1.5
+    }
+  }, "ℹ Esta CSF se guardará a nivel de ", /*#__PURE__*/React.createElement("strong", null, party.razon), " y aplicará a todos sus contratos en Colossu."))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "14px 22px",
+      borderTop: "1px solid #ECECEE",
+      display: "flex",
+      gap: 10,
+      justifyContent: "flex-end"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    style: {
+      padding: "9px 16px",
+      borderRadius: 8,
+      border: "1px solid #E5E7EB",
+      background: "white",
+      fontSize: 12,
+      fontWeight: 600,
+      color: "#6B7280",
+      cursor: "pointer",
+      fontFamily: FONT
+    }
+  }, "Cancelar"), stage === "confirm" && /*#__PURE__*/React.createElement("button", {
+    onClick: onConfirm,
+    style: {
+      padding: "9px 18px",
+      borderRadius: 8,
+      border: "none",
+      background: "#115E59",
+      color: "white",
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: "pointer",
+      fontFamily: FONT
+    }
+  }, "Guardar CSF"))));
+}
+
+// ── Tarjeta de una parte (receptor o emisor) ──
+function PartyCard({
+  party,
+  onUpload
+}) {
+  const csf = party.csf;
+  const s = CSF_ST[csf.status];
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      border: "1px solid #ECECEE",
+      borderRadius: 12,
+      padding: "18px 20px",
+      background: "white"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      fontWeight: 700,
+      color: "#14B8A6",
+      textTransform: "uppercase",
+      letterSpacing: 0.5
+    }
+  }, party.rol), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 15,
+      fontWeight: 700,
+      color: "#0F4F47",
+      marginTop: 3
+    }
+  }, party.razon), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontFamily: "monospace",
+      color: "#6B7280",
+      marginTop: 2
+    }
+  }, party.rfc)), /*#__PURE__*/React.createElement(CsfChip, {
+    status: csf.status
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "8px 16px",
+      padding: "12px 14px",
+      background: "#FAFAFB",
+      borderRadius: 9,
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 8.5,
+      fontWeight: 700,
+      color: "#9CA3AF",
+      textTransform: "uppercase"
+    }
+  }, "Régimen"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#1F2937",
+      marginTop: 1
+    }
+  }, party.regimen)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 8.5,
+      fontWeight: 700,
+      color: "#9CA3AF",
+      textTransform: "uppercase"
+    }
+  }, "Código postal"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#1F2937",
+      marginTop: 1
+    }
+  }, party.cp)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 8.5,
+      fontWeight: 700,
+      color: "#9CA3AF",
+      textTransform: "uppercase"
+    }
+  }, "Tipo persona"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#1F2937",
+      marginTop: 1
+    }
+  }, party.tipo === "PM" ? "Persona Moral" : "Persona Física")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 8.5,
+      fontWeight: 700,
+      color: "#9CA3AF",
+      textTransform: "uppercase"
+    }
+  }, "Aplica a"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#1F2937",
+      marginTop: 1
+    }
+  }, csf.otrosContratos + 1, " contrato", csf.otrosContratos > 0 ? "s" : ""))), csf.status !== "missing" ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "10px 12px",
+      border: "1px solid #ECECEE",
+      borderRadius: 9
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 32,
+      height: 32,
+      borderRadius: 7,
+      background: "#FEF2F2",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 15,
+      flexShrink: 0
+    }
+  }, "📄"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      fontWeight: 600,
+      color: "#1F2937",
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis"
+    }
+  }, csf.file), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9.5,
+      color: "#9CA3AF"
+    }
+  }, "Subida ", csf.uploaded, " · ", csf.source, csf.status === "expiring" ? ` · vence en ${csf.expiresIn}` : "")), /*#__PURE__*/React.createElement("button", {
+    style: {
+      padding: "5px 9px",
+      borderRadius: 6,
+      border: "1px solid #E5E7EB",
+      background: "white",
+      fontSize: 10,
+      fontWeight: 600,
+      color: "#6B7280",
+      cursor: "pointer",
+      fontFamily: FONT
+    }
+  }, "Ver")) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "12px 14px",
+      border: "1.5px dashed #FECACA",
+      borderRadius: 9,
+      background: "#FEF2F2",
+      fontSize: 11,
+      color: "#991B1B"
+    }
+  }, "No hay CSF cargada. Es necesaria para poder facturar."), csf.status === "expiring" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10.5,
+      color: "#92400E",
+      background: "#FFFBEB",
+      border: "1px solid #FDE68A",
+      borderRadius: 7,
+      padding: "8px 11px",
+      marginTop: 10
+    }
+  }, "⏰ Esta constancia vence pronto. Pide la actualizada para no interrumpir la facturación."), /*#__PURE__*/React.createElement("button", {
+    onClick: () => onUpload(party),
+    style: {
+      width: "100%",
+      marginTop: 12,
+      padding: "10px",
+      borderRadius: 8,
+      border: csf.status === "missing" ? "none" : "1px solid #115E59",
+      background: csf.status === "missing" ? "#115E59" : "white",
+      color: csf.status === "missing" ? "white" : "#115E59",
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: "pointer",
+      fontFamily: FONT
+    }
+  }, csf.status === "missing" ? "↑ Subir CSF" : "↻ Actualizar CSF"));
+}
+function SeccionCsfContrato() {
+  const [modal, setModal] = useState(null);
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: FONT,
+      background: "#FAFAFB",
+      minHeight: "100vh",
+      padding: "24px 28px",
+      color: "#1F2937"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#9CA3AF",
+      marginBottom: 6
+    }
+  }, "Contratos · ", /*#__PURE__*/React.createElement("a", {
+    href: `https://app.colossu.com/contratos/${CONTRACT.id}`,
+    style: {
+      color: "#B45309",
+      textDecoration: "none",
+      fontWeight: 600
+    }
+  }, CONTRACT.id), " · Documentos fiscales"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("h1", {
+    style: {
+      fontSize: 22,
+      fontWeight: 700,
+      color: "#0F4F47",
+      margin: 0
+    }
+  }, "Documentos fiscales"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#6B7280",
+      marginTop: 3
+    }
+  }, CONTRACT.espacio, " · constancias necesarias para facturar este contrato")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#EFF6FF",
+      border: "1px solid #BFDBFE",
+      borderRadius: 9,
+      padding: "9px 14px",
+      margin: "16px 0",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      fontSize: 11.5,
+      color: "#1D4ED8"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13
+    }
+  }, "ℹ"), "Las constancias se guardan a nivel de cada empresa, no del contrato. Si actualizas una CSF aquí, se actualiza en todos los contratos de esa empresa."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 18,
+      marginTop: 18
+    }
+  }, /*#__PURE__*/React.createElement(PartyCard, {
+    party: CONTRACT.receptor,
+    onUpload: setModal
+  }), /*#__PURE__*/React.createElement(PartyCard, {
+    party: CONTRACT.emisor,
+    onUpload: setModal
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10.5,
+      color: "#9CA3AF",
+      marginTop: 18,
+      lineHeight: 1.6
+    }
+  }, "El ", /*#__PURE__*/React.createElement("strong", null, "Certificado de Sello Digital (CSD)"), " del emisor —necesario para timbrar— se gestiona por separado en la configuración de la empresa, no en esta vista."), modal && /*#__PURE__*/React.createElement(UploadModal, {
+    party: modal,
+    onClose: () => setModal(null),
+    onConfirm: () => setModal(null)
+  }));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(SeccionCsfContrato));
+</script>
+</body>
+</html>

@@ -1,5 +1,31 @@
-import { useState, useMemo } from "react";
-
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prefacturación · Colossu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'DM Sans', sans-serif; background: #FAFAFB; }
+  .topbar { position: sticky; top: 0; z-index: 100; background: white; border-bottom: 1px solid #ECECEE; padding: 12px 20px; display: flex; align-items: center; gap: 14px; }
+  .topbar a { font-size: 13px; font-weight: 600; color: #0F766E; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .topbar .crumb { font-size: 12px; color: #9CA3AF; }
+  .topbar .badge { margin-left: auto; font-size: 10px; font-weight: 700; color: #B45309; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 5px; padding: 3px 9px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="index.html">← Volver al flujo</a>
+  <span class="crumb">Conector de Facturación · Prefacturación</span>
+  <span class="badge">Prototipo</span>
+</div>
+<div id="root"></div>
+<script>
+const { useState, useMemo, useReducer, useEffect, useRef } = React;
 // ============================================================
 // VISTA PREFACTURACIÓN v3 — Colossu / Pod-SaaS
 // 1 fila = 1 cargo = 1 CFDI. Tabla aplanada por cargo.
@@ -8,138 +34,544 @@ import { useState, useMemo } from "react";
 // ============================================================
 
 const FONT = "'DM Sans', -apple-system, system-ui, sans-serif";
-
 const SRC = {
-  contrato: { label: "Contrato", bg: "#FFFBEB", text: "#B45309", border: "#FDE68A" },
-  csf:      { label: "CSF",      bg: "#EFF6FF", text: "#1D4ED8", border: "#BFDBFE" },
-  sistema:  { label: "Sistema",  bg: "#F3F4F6", text: "#6B7280", border: "#E5E7EB" },
-  editable: { label: "Editable", bg: "#F0FDFA", text: "#0F766E", border: "#99F6E4" },
+  contrato: {
+    label: "Contrato",
+    bg: "#FFFBEB",
+    text: "#B45309",
+    border: "#FDE68A"
+  },
+  csf: {
+    label: "CSF",
+    bg: "#EFF6FF",
+    text: "#1D4ED8",
+    border: "#BFDBFE"
+  },
+  sistema: {
+    label: "Sistema",
+    bg: "#F3F4F6",
+    text: "#6B7280",
+    border: "#E5E7EB"
+  },
+  editable: {
+    label: "Editable",
+    bg: "#F0FDFA",
+    text: "#0F766E",
+    border: "#99F6E4"
+  }
 };
-
 const CARGO = {
-  renta:        { label: "Renta",          color: "#0F766E", bg: "#F0FDFA", clave: "80131500" },
-  mantenimiento:{ label: "Mantenimiento",  color: "#1D4ED8", bg: "#EFF6FF", clave: "72101500" },
-  variable:     { label: "Renta variable", color: "#7C3AED", bg: "#F5F3FF", clave: "80131500" },
-  servicio:     { label: "Servicios",      color: "#B45309", bg: "#FFFBEB", clave: "83101800" },
-  penalizacion: { label: "Penalización",   color: "#B91C1C", bg: "#FEF2F2", clave: "80131500" },
+  renta: {
+    label: "Renta",
+    color: "#0F766E",
+    bg: "#F0FDFA",
+    clave: "80131500"
+  },
+  mantenimiento: {
+    label: "Mantenimiento",
+    color: "#1D4ED8",
+    bg: "#EFF6FF",
+    clave: "72101500"
+  },
+  variable: {
+    label: "Renta variable",
+    color: "#7C3AED",
+    bg: "#F5F3FF",
+    clave: "80131500"
+  },
+  servicio: {
+    label: "Servicios",
+    color: "#B45309",
+    bg: "#FFFBEB",
+    clave: "83101800"
+  },
+  penalizacion: {
+    label: "Penalización",
+    color: "#B91C1C",
+    bg: "#FEF2F2",
+    clave: "80131500"
+  }
 };
-
 const PRE = {
-  ready:    { label: "Lista",       bg: "#F0FDFA", text: "#0F766E", dot: "#14B8A6", border: "#99F6E4" },
-  review:   { label: "Revisar",     bg: "#FFFBEB", text: "#92400E", dot: "#F59E0B", border: "#FDE68A" },
-  excluded: { label: "No se emite", bg: "#F9FAFB", text: "#6B7280", dot: "#D1D5DB", border: "#E5E7EB" },
-  blocked:  { label: "Bloqueada",   bg: "#FEF2F2", text: "#991B1B", dot: "#EF4444", border: "#FECACA" },
+  ready: {
+    label: "Lista",
+    bg: "#F0FDFA",
+    text: "#0F766E",
+    dot: "#14B8A6",
+    border: "#99F6E4"
+  },
+  review: {
+    label: "Revisar",
+    bg: "#FFFBEB",
+    text: "#92400E",
+    dot: "#F59E0B",
+    border: "#FDE68A"
+  },
+  excluded: {
+    label: "No se emite",
+    bg: "#F9FAFB",
+    text: "#6B7280",
+    dot: "#D1D5DB",
+    border: "#E5E7EB"
+  },
+  blocked: {
+    label: "Bloqueada",
+    bg: "#FEF2F2",
+    text: "#991B1B",
+    dot: "#EF4444",
+    border: "#FECACA"
+  }
 };
-
 const STAMP = {
-  pending: { label: "Por emitir", text: "#6B7280", dot: "#D1D5DB" },
-  stamped: { label: "Timbrada",   text: "#065F46", dot: "#10B981" },
-  failed:  { label: "Error PAC",  text: "#991B1B", dot: "#EF4444" },
-  sent:    { label: "Enviada",    text: "#1D4ED8", dot: "#3B82F6" },
+  pending: {
+    label: "Por emitir",
+    text: "#6B7280",
+    dot: "#D1D5DB"
+  },
+  stamped: {
+    label: "Timbrada",
+    text: "#065F46",
+    dot: "#10B981"
+  },
+  failed: {
+    label: "Error PAC",
+    text: "#991B1B",
+    dot: "#EF4444"
+  },
+  sent: {
+    label: "Enviada",
+    text: "#1D4ED8",
+    dot: "#3B82F6"
+  }
 };
-
-const $f = (n) => "$" + Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const $f = n => "$" + Number(n).toLocaleString("es-MX", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
 const CONTRACT_BASE = "https://app.colossu.com/contratos/";
 
 // ── Datos canónicos: 1 objeto = 1 cargo = 1 CFDI ──
-const INIT = [
-  { id: "PRE-2026-0001", tipo: "renta", concepto: "Renta comercial", contractId: "CT-2025-RT-001", periodo: "Jun 2026",
-    receptor: { razon: "Café Polanco SA de CV", rfc: "CPO210304K23", regimen: "601 · General de Ley PM", cp: "11560", csfOk: true },
-    emisor: { razon: "Inmobiliaria Bonacci SA de CV", rfc: "IBO190315KL8", regimen: "601 · General de Ley PM", cp: "06700" },
-    espacio: "Torre Fibonacci · Local PB-02", monto: 95000, ivaRate: 0.16,
-    usoCfdi: "G03 · Gastos en general", efecto: "I · Ingreso", metodoPago: "PUE", formaPago: "03 · Transferencia",
-    moneda: "MXN", tc: null, tipoEmisor: "PM", tipoReceptor: "PM",
-    excluded: false, pre: "ready", stamp: "pending", notas: "", descripcion: "" },
-
-  { id: "PRE-2026-0002", tipo: "mantenimiento", concepto: "Cuota de mantenimiento", contractId: "CT-2025-RT-001", periodo: "Jun 2026",
-    receptor: { razon: "Café Polanco SA de CV", rfc: "CPO210304K23", regimen: "601 · General de Ley PM", cp: "11560", csfOk: true },
-    emisor: { razon: "Inmobiliaria Bonacci SA de CV", rfc: "IBO190315KL8", regimen: "601 · General de Ley PM", cp: "06700" },
-    espacio: "Torre Fibonacci · Local PB-02", monto: 8500, ivaRate: 0.16,
-    usoCfdi: "G03 · Gastos en general", efecto: "I · Ingreso", metodoPago: "PUE", formaPago: "03 · Transferencia",
-    moneda: "MXN", tc: null, tipoEmisor: "PM", tipoReceptor: "PM",
-    excluded: false, pre: "ready", stamp: "pending", notas: "", descripcion: "" },
-
-  { id: "PRE-2026-0003", tipo: "servicio", concepto: "Energía eléctrica", contractId: "CT-2025-RT-001", periodo: "May 2026",
-    receptor: { razon: "Café Polanco SA de CV", rfc: "CPO210304K23", regimen: "601 · General de Ley PM", cp: "11560", csfOk: true },
-    emisor: { razon: "Inmobiliaria Bonacci SA de CV", rfc: "IBO190315KL8", regimen: "601 · General de Ley PM", cp: "06700" },
-    espacio: "Torre Fibonacci · Local PB-02", monto: 4200, ivaRate: 0.16,
-    usoCfdi: "G03 · Gastos en general", efecto: "I · Ingreso", metodoPago: "PUE", formaPago: "03 · Transferencia",
-    moneda: "MXN", tc: null, tipoEmisor: "PM", tipoReceptor: "PM",
-    excluded: false, pre: "ready", stamp: "pending", notas: "", descripcion: "Consumo CFE medidor 04-A" },
-
-  { id: "PRE-2026-0004", tipo: "renta", concepto: "Renta de oficina", contractId: "CT-2025-OF-014", periodo: "Jun 2026",
-    receptor: { razon: "Leonardo Bonacci", rfc: "BACL850720HG3", regimen: "612 · PFAE", cp: "01000", csfOk: true },
-    emisor: { razon: "Desarrollos Pisa SA de CV", rfc: "DPI200612MN4", regimen: "601 · General de Ley PM", cp: "06700" },
-    espacio: "Torre Fibonacci · Of P5-03", monto: 48000, ivaRate: 0.16,
-    usoCfdi: "G03 · Gastos en general", efecto: "I · Ingreso", metodoPago: "PPD", formaPago: "99 · Por definir",
-    moneda: "MXN", tc: null, tipoEmisor: "PM", tipoReceptor: "PF",
-    excluded: false, pre: "review", stamp: "pending", notas: "PPD: requiere complemento de pago al cobrar.", descripcion: "" },
-
-  { id: "PRE-2026-0005", tipo: "servicio", concepto: "Agua", contractId: "CT-2025-OF-014", periodo: "May 2026",
-    receptor: { razon: "Leonardo Bonacci", rfc: "BACL850720HG3", regimen: "612 · PFAE", cp: "01000", csfOk: true },
-    emisor: { razon: "Desarrollos Pisa SA de CV", rfc: "DPI200612MN4", regimen: "601 · General de Ley PM", cp: "06700" },
-    espacio: "Torre Fibonacci · Of P5-03", monto: 1800, ivaRate: 0.16,
-    usoCfdi: "G03 · Gastos en general", efecto: "I · Ingreso", metodoPago: "PPD", formaPago: "99 · Por definir",
-    moneda: "MXN", tc: null, tipoEmisor: "PM", tipoReceptor: "PF",
-    excluded: false, pre: "review", stamp: "pending", notas: "", descripcion: "SACMEX bimestral prorrateado" },
-
-  { id: "PRE-2026-0006", tipo: "renta", concepto: "Renta mínima garantizada", contractId: "CT-2025-RT-012", periodo: "Jun 2026",
-    receptor: { razon: "Zara Retail México SA de CV", rfc: "ZRM080115AB3", regimen: "601 · General de Ley PM", cp: "53100", csfOk: true },
-    emisor: { razon: "Inmobiliaria Bonacci SA de CV", rfc: "IBO190315KL8", regimen: "601 · General de Ley PM", cp: "06700" },
-    espacio: "Torre Fibonacci · Local PB-10", monto: 120000, ivaRate: 0.16,
-    usoCfdi: "G03 · Gastos en general", efecto: "I · Ingreso", metodoPago: "PUE", formaPago: "03 · Transferencia",
-    moneda: "MXN", tc: null, tipoEmisor: "PM", tipoReceptor: "PM",
-    excluded: false, pre: "ready", stamp: "pending", notas: "", descripcion: "" },
-
-  { id: "PRE-2026-0007", tipo: "variable", concepto: "Excedente renta variable", contractId: "CT-2025-RT-012", periodo: "May 2026",
-    receptor: { razon: "Zara Retail México SA de CV", rfc: "ZRM080115AB3", regimen: "601 · General de Ley PM", cp: "53100", csfOk: true },
-    emisor: { razon: "Inmobiliaria Bonacci SA de CV", rfc: "IBO190315KL8", regimen: "601 · General de Ley PM", cp: "06700" },
-    espacio: "Torre Fibonacci · Local PB-10", monto: 38500, ivaRate: 0.16,
-    usoCfdi: "G03 · Gastos en general", efecto: "I · Ingreso", metodoPago: "PUE", formaPago: "03 · Transferencia",
-    moneda: "MXN", tc: null, tipoEmisor: "PM", tipoReceptor: "PM",
-    excluded: false, pre: "ready", stamp: "pending", notas: "", descripcion: "7% sobre ventas $2,750,000 − RMG. Snapshot regla v3." },
-
-  { id: "PRE-2026-0008", tipo: "renta", concepto: "Renta comercial", contractId: "CT-2025-RT-007", periodo: "Jun 2026",
-    receptor: { razon: "Boutique Médici", rfc: "BME150810QP9", regimen: "626 · RESICO", cp: "—", csfOk: false },
-    emisor: { razon: "Inmobiliaria Bonacci SA de CV", rfc: "IBO190315KL8", regimen: "601 · General de Ley PM", cp: "06700" },
-    espacio: "Torre Fibonacci · Local PB-05", monto: 72000, ivaRate: 0.16,
-    usoCfdi: "G03 · Gastos en general", efecto: "I · Ingreso", metodoPago: "PUE", formaPago: "03 · Transferencia",
-    moneda: "MXN", tc: null, tipoEmisor: "PM", tipoReceptor: "PF",
-    excluded: false, pre: "blocked", stamp: "pending", notas: "CP del receptor no coincide con CSF. Validar antes de timbrar.", descripcion: "" },
-
-  { id: "PRE-2026-0009", tipo: "penalizacion", concepto: "Penalización por mora", contractId: "CT-2025-RT-007", periodo: "May 2026",
-    receptor: { razon: "Boutique Médici", rfc: "BME150810QP9", regimen: "626 · RESICO", cp: "—", csfOk: false },
-    emisor: { razon: "Inmobiliaria Bonacci SA de CV", rfc: "IBO190315KL8", regimen: "601 · General de Ley PM", cp: "06700" },
-    espacio: "Torre Fibonacci · Local PB-05", monto: 7200, ivaRate: 0.16,
-    usoCfdi: "G03 · Gastos en general", efecto: "I · Ingreso", metodoPago: "PUE", formaPago: "03 · Transferencia",
-    moneda: "MXN", tc: null, tipoEmisor: "PM", tipoReceptor: "PF",
-    excluded: false, pre: "blocked", stamp: "pending", notas: "Depende del cargo de renta del mismo contrato.", descripcion: "Cláusula 8.2: 10% sobre renta vencida." },
-
-  { id: "PRE-2026-0010", tipo: "renta", concepto: "Renta industrial", contractId: "CT-2025-IN-003", periodo: "Jun 2026",
-    receptor: { razon: "Logística Quattro SA de CV", rfc: "LQU180925RT1", regimen: "601 · General de Ley PM", cp: "54960", csfOk: true },
-    emisor: { razon: "Arrendadora Aurelia (PF)", rfc: "AAFP801010PF2", regimen: "606 · Arrendamiento PF", cp: "06700" },
-    espacio: "Nave Industrial Quattro · N-04", monto: 210000, ivaRate: 0.16,
-    usoCfdi: "G03 · Gastos en general", efecto: "I · Ingreso", metodoPago: "PUE", formaPago: "03 · Transferencia",
-    moneda: "MXN", tc: null, tipoEmisor: "PF", tipoReceptor: "PM",
-    excluded: false, pre: "ready", stamp: "pending", notas: "PF→PM: aplica retención IVA e ISR (arrendamiento).", descripcion: "" },
-
-  { id: "PRE-2026-0011", tipo: "servicio", concepto: "Vigilancia y limpieza", contractId: "CT-2025-IN-003", periodo: "Jun 2026",
-    receptor: { razon: "Logística Quattro SA de CV", rfc: "LQU180925RT1", regimen: "601 · General de Ley PM", cp: "54960", csfOk: true },
-    emisor: { razon: "Arrendadora Aurelia (PF)", rfc: "AAFP801010PF2", regimen: "606 · Arrendamiento PF", cp: "06700" },
-    espacio: "Nave Industrial Quattro · N-04", monto: 18000, ivaRate: 0.16,
-    usoCfdi: "G03 · Gastos en general", efecto: "I · Ingreso", metodoPago: "PUE", formaPago: "03 · Transferencia",
-    moneda: "MXN", tc: null, tipoEmisor: "PF", tipoReceptor: "PM",
-    excluded: false, pre: "ready", stamp: "pending", notas: "", descripcion: "" },
-
-  { id: "PRE-2026-0012", tipo: "renta", concepto: "Renta de oficina", contractId: "CT-2025-OF-021", periodo: "Jun 2026",
-    receptor: { razon: "Estudio Aurea SC", rfc: "EAU190530SC8", regimen: "601 · General de Ley PM", cp: "03100", csfOk: true },
-    emisor: { razon: "Inmobiliaria Bonacci SA de CV", rfc: "IBO190315KL8", regimen: "601 · General de Ley PM", cp: "06700" },
-    espacio: "Torre Fibonacci · Of P7-01", monto: 62000, ivaRate: 0.16,
-    usoCfdi: "G03 · Gastos en general", efecto: "I · Ingreso", metodoPago: "PUE", formaPago: "03 · Transferencia",
-    moneda: "MXN", tc: null, tipoEmisor: "PM", tipoReceptor: "PM",
-    excluded: true, pre: "excluded", stamp: "pending", notas: "Condonación de renta este mes (acuerdo comercial).", descripcion: "" },
-];
-
+const INIT = [{
+  id: "PRE-2026-0001",
+  tipo: "renta",
+  concepto: "Renta comercial",
+  contractId: "CT-2025-RT-001",
+  periodo: "Jun 2026",
+  receptor: {
+    razon: "Café Polanco SA de CV",
+    rfc: "CPO210304K23",
+    regimen: "601 · General de Ley PM",
+    cp: "11560",
+    csfOk: true
+  },
+  emisor: {
+    razon: "Inmobiliaria Bonacci SA de CV",
+    rfc: "IBO190315KL8",
+    regimen: "601 · General de Ley PM",
+    cp: "06700"
+  },
+  espacio: "Torre Fibonacci · Local PB-02",
+  monto: 95000,
+  ivaRate: 0.16,
+  usoCfdi: "G03 · Gastos en general",
+  efecto: "I · Ingreso",
+  metodoPago: "PUE",
+  formaPago: "03 · Transferencia",
+  moneda: "MXN",
+  tc: null,
+  tipoEmisor: "PM",
+  tipoReceptor: "PM",
+  excluded: false,
+  pre: "ready",
+  stamp: "pending",
+  notas: "",
+  descripcion: ""
+}, {
+  id: "PRE-2026-0002",
+  tipo: "mantenimiento",
+  concepto: "Cuota de mantenimiento",
+  contractId: "CT-2025-RT-001",
+  periodo: "Jun 2026",
+  receptor: {
+    razon: "Café Polanco SA de CV",
+    rfc: "CPO210304K23",
+    regimen: "601 · General de Ley PM",
+    cp: "11560",
+    csfOk: true
+  },
+  emisor: {
+    razon: "Inmobiliaria Bonacci SA de CV",
+    rfc: "IBO190315KL8",
+    regimen: "601 · General de Ley PM",
+    cp: "06700"
+  },
+  espacio: "Torre Fibonacci · Local PB-02",
+  monto: 8500,
+  ivaRate: 0.16,
+  usoCfdi: "G03 · Gastos en general",
+  efecto: "I · Ingreso",
+  metodoPago: "PUE",
+  formaPago: "03 · Transferencia",
+  moneda: "MXN",
+  tc: null,
+  tipoEmisor: "PM",
+  tipoReceptor: "PM",
+  excluded: false,
+  pre: "ready",
+  stamp: "pending",
+  notas: "",
+  descripcion: ""
+}, {
+  id: "PRE-2026-0003",
+  tipo: "servicio",
+  concepto: "Energía eléctrica",
+  contractId: "CT-2025-RT-001",
+  periodo: "May 2026",
+  receptor: {
+    razon: "Café Polanco SA de CV",
+    rfc: "CPO210304K23",
+    regimen: "601 · General de Ley PM",
+    cp: "11560",
+    csfOk: true
+  },
+  emisor: {
+    razon: "Inmobiliaria Bonacci SA de CV",
+    rfc: "IBO190315KL8",
+    regimen: "601 · General de Ley PM",
+    cp: "06700"
+  },
+  espacio: "Torre Fibonacci · Local PB-02",
+  monto: 4200,
+  ivaRate: 0.16,
+  usoCfdi: "G03 · Gastos en general",
+  efecto: "I · Ingreso",
+  metodoPago: "PUE",
+  formaPago: "03 · Transferencia",
+  moneda: "MXN",
+  tc: null,
+  tipoEmisor: "PM",
+  tipoReceptor: "PM",
+  excluded: false,
+  pre: "ready",
+  stamp: "pending",
+  notas: "",
+  descripcion: "Consumo CFE medidor 04-A"
+}, {
+  id: "PRE-2026-0004",
+  tipo: "renta",
+  concepto: "Renta de oficina",
+  contractId: "CT-2025-OF-014",
+  periodo: "Jun 2026",
+  receptor: {
+    razon: "Leonardo Bonacci",
+    rfc: "BACL850720HG3",
+    regimen: "612 · PFAE",
+    cp: "01000",
+    csfOk: true
+  },
+  emisor: {
+    razon: "Desarrollos Pisa SA de CV",
+    rfc: "DPI200612MN4",
+    regimen: "601 · General de Ley PM",
+    cp: "06700"
+  },
+  espacio: "Torre Fibonacci · Of P5-03",
+  monto: 48000,
+  ivaRate: 0.16,
+  usoCfdi: "G03 · Gastos en general",
+  efecto: "I · Ingreso",
+  metodoPago: "PPD",
+  formaPago: "99 · Por definir",
+  moneda: "MXN",
+  tc: null,
+  tipoEmisor: "PM",
+  tipoReceptor: "PF",
+  excluded: false,
+  pre: "review",
+  stamp: "pending",
+  notas: "PPD: requiere complemento de pago al cobrar.",
+  descripcion: ""
+}, {
+  id: "PRE-2026-0005",
+  tipo: "servicio",
+  concepto: "Agua",
+  contractId: "CT-2025-OF-014",
+  periodo: "May 2026",
+  receptor: {
+    razon: "Leonardo Bonacci",
+    rfc: "BACL850720HG3",
+    regimen: "612 · PFAE",
+    cp: "01000",
+    csfOk: true
+  },
+  emisor: {
+    razon: "Desarrollos Pisa SA de CV",
+    rfc: "DPI200612MN4",
+    regimen: "601 · General de Ley PM",
+    cp: "06700"
+  },
+  espacio: "Torre Fibonacci · Of P5-03",
+  monto: 1800,
+  ivaRate: 0.16,
+  usoCfdi: "G03 · Gastos en general",
+  efecto: "I · Ingreso",
+  metodoPago: "PPD",
+  formaPago: "99 · Por definir",
+  moneda: "MXN",
+  tc: null,
+  tipoEmisor: "PM",
+  tipoReceptor: "PF",
+  excluded: false,
+  pre: "review",
+  stamp: "pending",
+  notas: "",
+  descripcion: "SACMEX bimestral prorrateado"
+}, {
+  id: "PRE-2026-0006",
+  tipo: "renta",
+  concepto: "Renta mínima garantizada",
+  contractId: "CT-2025-RT-012",
+  periodo: "Jun 2026",
+  receptor: {
+    razon: "Zara Retail México SA de CV",
+    rfc: "ZRM080115AB3",
+    regimen: "601 · General de Ley PM",
+    cp: "53100",
+    csfOk: true
+  },
+  emisor: {
+    razon: "Inmobiliaria Bonacci SA de CV",
+    rfc: "IBO190315KL8",
+    regimen: "601 · General de Ley PM",
+    cp: "06700"
+  },
+  espacio: "Torre Fibonacci · Local PB-10",
+  monto: 120000,
+  ivaRate: 0.16,
+  usoCfdi: "G03 · Gastos en general",
+  efecto: "I · Ingreso",
+  metodoPago: "PUE",
+  formaPago: "03 · Transferencia",
+  moneda: "MXN",
+  tc: null,
+  tipoEmisor: "PM",
+  tipoReceptor: "PM",
+  excluded: false,
+  pre: "ready",
+  stamp: "pending",
+  notas: "",
+  descripcion: ""
+}, {
+  id: "PRE-2026-0007",
+  tipo: "variable",
+  concepto: "Excedente renta variable",
+  contractId: "CT-2025-RT-012",
+  periodo: "May 2026",
+  receptor: {
+    razon: "Zara Retail México SA de CV",
+    rfc: "ZRM080115AB3",
+    regimen: "601 · General de Ley PM",
+    cp: "53100",
+    csfOk: true
+  },
+  emisor: {
+    razon: "Inmobiliaria Bonacci SA de CV",
+    rfc: "IBO190315KL8",
+    regimen: "601 · General de Ley PM",
+    cp: "06700"
+  },
+  espacio: "Torre Fibonacci · Local PB-10",
+  monto: 38500,
+  ivaRate: 0.16,
+  usoCfdi: "G03 · Gastos en general",
+  efecto: "I · Ingreso",
+  metodoPago: "PUE",
+  formaPago: "03 · Transferencia",
+  moneda: "MXN",
+  tc: null,
+  tipoEmisor: "PM",
+  tipoReceptor: "PM",
+  excluded: false,
+  pre: "ready",
+  stamp: "pending",
+  notas: "",
+  descripcion: "7% sobre ventas $2,750,000 − RMG. Snapshot regla v3."
+}, {
+  id: "PRE-2026-0008",
+  tipo: "renta",
+  concepto: "Renta comercial",
+  contractId: "CT-2025-RT-007",
+  periodo: "Jun 2026",
+  receptor: {
+    razon: "Boutique Médici",
+    rfc: "BME150810QP9",
+    regimen: "626 · RESICO",
+    cp: "—",
+    csfOk: false
+  },
+  emisor: {
+    razon: "Inmobiliaria Bonacci SA de CV",
+    rfc: "IBO190315KL8",
+    regimen: "601 · General de Ley PM",
+    cp: "06700"
+  },
+  espacio: "Torre Fibonacci · Local PB-05",
+  monto: 72000,
+  ivaRate: 0.16,
+  usoCfdi: "G03 · Gastos en general",
+  efecto: "I · Ingreso",
+  metodoPago: "PUE",
+  formaPago: "03 · Transferencia",
+  moneda: "MXN",
+  tc: null,
+  tipoEmisor: "PM",
+  tipoReceptor: "PF",
+  excluded: false,
+  pre: "blocked",
+  stamp: "pending",
+  notas: "CP del receptor no coincide con CSF. Validar antes de timbrar.",
+  descripcion: ""
+}, {
+  id: "PRE-2026-0009",
+  tipo: "penalizacion",
+  concepto: "Penalización por mora",
+  contractId: "CT-2025-RT-007",
+  periodo: "May 2026",
+  receptor: {
+    razon: "Boutique Médici",
+    rfc: "BME150810QP9",
+    regimen: "626 · RESICO",
+    cp: "—",
+    csfOk: false
+  },
+  emisor: {
+    razon: "Inmobiliaria Bonacci SA de CV",
+    rfc: "IBO190315KL8",
+    regimen: "601 · General de Ley PM",
+    cp: "06700"
+  },
+  espacio: "Torre Fibonacci · Local PB-05",
+  monto: 7200,
+  ivaRate: 0.16,
+  usoCfdi: "G03 · Gastos en general",
+  efecto: "I · Ingreso",
+  metodoPago: "PUE",
+  formaPago: "03 · Transferencia",
+  moneda: "MXN",
+  tc: null,
+  tipoEmisor: "PM",
+  tipoReceptor: "PF",
+  excluded: false,
+  pre: "blocked",
+  stamp: "pending",
+  notas: "Depende del cargo de renta del mismo contrato.",
+  descripcion: "Cláusula 8.2: 10% sobre renta vencida."
+}, {
+  id: "PRE-2026-0010",
+  tipo: "renta",
+  concepto: "Renta industrial",
+  contractId: "CT-2025-IN-003",
+  periodo: "Jun 2026",
+  receptor: {
+    razon: "Logística Quattro SA de CV",
+    rfc: "LQU180925RT1",
+    regimen: "601 · General de Ley PM",
+    cp: "54960",
+    csfOk: true
+  },
+  emisor: {
+    razon: "Arrendadora Aurelia (PF)",
+    rfc: "AAFP801010PF2",
+    regimen: "606 · Arrendamiento PF",
+    cp: "06700"
+  },
+  espacio: "Nave Industrial Quattro · N-04",
+  monto: 210000,
+  ivaRate: 0.16,
+  usoCfdi: "G03 · Gastos en general",
+  efecto: "I · Ingreso",
+  metodoPago: "PUE",
+  formaPago: "03 · Transferencia",
+  moneda: "MXN",
+  tc: null,
+  tipoEmisor: "PF",
+  tipoReceptor: "PM",
+  excluded: false,
+  pre: "ready",
+  stamp: "pending",
+  notas: "PF→PM: aplica retención IVA e ISR (arrendamiento).",
+  descripcion: ""
+}, {
+  id: "PRE-2026-0011",
+  tipo: "servicio",
+  concepto: "Vigilancia y limpieza",
+  contractId: "CT-2025-IN-003",
+  periodo: "Jun 2026",
+  receptor: {
+    razon: "Logística Quattro SA de CV",
+    rfc: "LQU180925RT1",
+    regimen: "601 · General de Ley PM",
+    cp: "54960",
+    csfOk: true
+  },
+  emisor: {
+    razon: "Arrendadora Aurelia (PF)",
+    rfc: "AAFP801010PF2",
+    regimen: "606 · Arrendamiento PF",
+    cp: "06700"
+  },
+  espacio: "Nave Industrial Quattro · N-04",
+  monto: 18000,
+  ivaRate: 0.16,
+  usoCfdi: "G03 · Gastos en general",
+  efecto: "I · Ingreso",
+  metodoPago: "PUE",
+  formaPago: "03 · Transferencia",
+  moneda: "MXN",
+  tc: null,
+  tipoEmisor: "PF",
+  tipoReceptor: "PM",
+  excluded: false,
+  pre: "ready",
+  stamp: "pending",
+  notas: "",
+  descripcion: ""
+}, {
+  id: "PRE-2026-0012",
+  tipo: "renta",
+  concepto: "Renta de oficina",
+  contractId: "CT-2025-OF-021",
+  periodo: "Jun 2026",
+  receptor: {
+    razon: "Estudio Aurea SC",
+    rfc: "EAU190530SC8",
+    regimen: "601 · General de Ley PM",
+    cp: "03100",
+    csfOk: true
+  },
+  emisor: {
+    razon: "Inmobiliaria Bonacci SA de CV",
+    rfc: "IBO190315KL8",
+    regimen: "601 · General de Ley PM",
+    cp: "06700"
+  },
+  espacio: "Torre Fibonacci · Of P7-01",
+  monto: 62000,
+  ivaRate: 0.16,
+  usoCfdi: "G03 · Gastos en general",
+  efecto: "I · Ingreso",
+  metodoPago: "PUE",
+  formaPago: "03 · Transferencia",
+  moneda: "MXN",
+  tc: null,
+  tipoEmisor: "PM",
+  tipoReceptor: "PM",
+  excluded: true,
+  pre: "excluded",
+  stamp: "pending",
+  notas: "Condonación de renta este mes (acuerdo comercial).",
+  descripcion: ""
+}];
 function computeTotals(c) {
   const subtotal = c.monto;
   const iva = c.monto * c.ivaRate;
@@ -147,249 +579,905 @@ function computeTotals(c) {
   const retIva = aplicaRet ? iva * (2 / 3) : 0;
   const retIsr = aplicaRet ? subtotal * 0.10 : 0;
   const total = subtotal + iva - retIva - retIsr;
-  return { subtotal, iva, retIva, retIsr, total, aplicaRet };
+  return {
+    subtotal,
+    iva,
+    retIva,
+    retIsr,
+    total,
+    aplicaRet
+  };
 }
-
-function Badge({ src, small }) {
+function Badge({
+  src,
+  small
+}) {
   const s = SRC[src];
   if (!s) return null;
-  return <span style={{ display: "inline-flex", alignItems: "center", padding: small ? "1px 5px" : "2px 7px", borderRadius: 5, background: s.bg, border: `1px solid ${s.border}`, fontSize: small ? 8 : 9, fontWeight: 700, color: s.text, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 0.3 }}>{s.label}</span>;
+  return /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      padding: small ? "1px 5px" : "2px 7px",
+      borderRadius: 5,
+      background: s.bg,
+      border: `1px solid ${s.border}`,
+      fontSize: small ? 8 : 9,
+      fontWeight: 700,
+      color: s.text,
+      whiteSpace: "nowrap",
+      textTransform: "uppercase",
+      letterSpacing: 0.3
+    }
+  }, s.label);
 }
-
-function PreChip({ state }) {
+function PreChip({
+  state
+}) {
   const s = PRE[state];
-  return <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 20, background: s.bg, border: `1px solid ${s.border}`, fontSize: 10, fontWeight: 600, color: s.text, whiteSpace: "nowrap" }}><span style={{ width: 5, height: 5, borderRadius: "50%", background: s.dot }} />{s.label}</span>;
+  return /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4,
+      padding: "3px 8px",
+      borderRadius: 20,
+      background: s.bg,
+      border: `1px solid ${s.border}`,
+      fontSize: 10,
+      fontWeight: 600,
+      color: s.text,
+      whiteSpace: "nowrap"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 5,
+      height: 5,
+      borderRadius: "50%",
+      background: s.dot
+    }
+  }), s.label);
 }
-
-function StampChip({ state }) {
+function StampChip({
+  state
+}) {
   const s = STAMP[state];
-  return <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 600, color: s.text }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: s.dot }} />{s.label}</span>;
+  return /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4,
+      fontSize: 10,
+      fontWeight: 600,
+      color: s.text
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 6,
+      height: 6,
+      borderRadius: "50%",
+      background: s.dot
+    }
+  }), s.label);
 }
-
-function CargoTag({ tipo }) {
+function CargoTag({
+  tipo
+}) {
   const c = CARGO[tipo];
-  return <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 5, background: c.bg, color: c.color, whiteSpace: "nowrap" }}><span style={{ width: 5, height: 5, borderRadius: "50%", background: c.color }} />{c.label}</span>;
+  return /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4,
+      fontSize: 10,
+      fontWeight: 700,
+      padding: "2px 7px",
+      borderRadius: 5,
+      background: c.bg,
+      color: c.color,
+      whiteSpace: "nowrap"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 5,
+      height: 5,
+      borderRadius: "50%",
+      background: c.color
+    }
+  }), c.label);
 }
-
-function ContractLink({ id, small }) {
-  return <a href={CONTRACT_BASE + id} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: small ? 10 : 11, fontWeight: 600, color: "#B45309", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 5, padding: small ? "1px 6px" : "2px 7px", textDecoration: "none", whiteSpace: "nowrap" }}>🔗 {id} <span style={{ opacity: 0.55 }}>↗</span></a>;
+function ContractLink({
+  id,
+  small
+}) {
+  return /*#__PURE__*/React.createElement("a", {
+    href: CONTRACT_BASE + id,
+    target: "_blank",
+    rel: "noreferrer",
+    onClick: e => e.stopPropagation(),
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 3,
+      fontSize: small ? 10 : 11,
+      fontWeight: 600,
+      color: "#B45309",
+      background: "#FFFBEB",
+      border: "1px solid #FDE68A",
+      borderRadius: 5,
+      padding: small ? "1px 6px" : "2px 7px",
+      textDecoration: "none",
+      whiteSpace: "nowrap"
+    }
+  }, "🔗 ", id, " ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      opacity: 0.55
+    }
+  }, "↗"));
 }
-
-function Field({ label, value, src, editable, onChange, options, warn }) {
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-        <span style={{ fontSize: 9, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</span>
-        <Badge src={src} small />
-      </div>
-      {editable && options ? (
-        <select value={value} onChange={(e) => onChange?.(e.target.value)} style={{ width: "100%", padding: "7px 9px", border: "1.5px solid #99F6E4", borderRadius: 7, fontSize: 12, fontFamily: FONT, outline: "none", background: "#F0FDFA", color: "#134E4A", appearance: "none", boxSizing: "border-box" }}>
-          {options.map((o) => <option key={o}>{o}</option>)}
-        </select>
-      ) : editable ? (
-        <input value={value} onChange={(e) => onChange?.(e.target.value)} style={{ width: "100%", padding: "7px 9px", border: "1.5px solid #99F6E4", borderRadius: 7, fontSize: 12, fontFamily: FONT, outline: "none", background: "#F0FDFA", color: "#134E4A", boxSizing: "border-box" }} />
-      ) : (
-        <div style={{ fontSize: 12, fontWeight: 500, color: warn ? "#B91C1C" : "#1F2937", padding: "3px 0" }}>{value}{warn && <span style={{ marginLeft: 6, fontSize: 10, color: "#EF4444" }}>⚠ revisar</span>}</div>
-      )}
-    </div>
-  );
+function Field({
+  label,
+  value,
+  src,
+  editable,
+  onChange,
+  options,
+  warn
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 9,
+      fontWeight: 700,
+      color: "#9CA3AF",
+      textTransform: "uppercase",
+      letterSpacing: 0.4
+    }
+  }, label), /*#__PURE__*/React.createElement(Badge, {
+    src: src,
+    small: true
+  })), editable && options ? /*#__PURE__*/React.createElement("select", {
+    value: value,
+    onChange: e => onChange?.(e.target.value),
+    style: {
+      width: "100%",
+      padding: "7px 9px",
+      border: "1.5px solid #99F6E4",
+      borderRadius: 7,
+      fontSize: 12,
+      fontFamily: FONT,
+      outline: "none",
+      background: "#F0FDFA",
+      color: "#134E4A",
+      appearance: "none",
+      boxSizing: "border-box"
+    }
+  }, options.map(o => /*#__PURE__*/React.createElement("option", {
+    key: o
+  }, o))) : editable ? /*#__PURE__*/React.createElement("input", {
+    value: value,
+    onChange: e => onChange?.(e.target.value),
+    style: {
+      width: "100%",
+      padding: "7px 9px",
+      border: "1.5px solid #99F6E4",
+      borderRadius: 7,
+      fontSize: 12,
+      fontFamily: FONT,
+      outline: "none",
+      background: "#F0FDFA",
+      color: "#134E4A",
+      boxSizing: "border-box"
+    }
+  }) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 500,
+      color: warn ? "#B91C1C" : "#1F2937",
+      padding: "3px 0"
+    }
+  }, value, warn && /*#__PURE__*/React.createElement("span", {
+    style: {
+      marginLeft: 6,
+      fontSize: 10,
+      color: "#EF4444"
+    }
+  }, "⚠ revisar")));
 }
-
-function SectionTitle({ children }) {
-  return <div style={{ fontSize: 10, fontWeight: 800, color: "#0F4F47", textTransform: "uppercase", letterSpacing: 0.6, margin: "18px 0 10px", paddingBottom: 6, borderBottom: "1px solid #F3F4F6" }}>{children}</div>;
+function SectionTitle({
+  children
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      fontWeight: 800,
+      color: "#0F4F47",
+      textTransform: "uppercase",
+      letterSpacing: 0.6,
+      margin: "18px 0 10px",
+      paddingBottom: 6,
+      borderBottom: "1px solid #F3F4F6"
+    }
+  }, children);
 }
-
-function DetailPanel({ row, onClose, onUpdate, onToggleExclude }) {
+function DetailPanel({
+  row,
+  onClose,
+  onUpdate,
+  onToggleExclude
+}) {
   if (!row) return null;
   const t = computeTotals(row);
   const cc = CARGO[row.tipo];
-
-  return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.25)", zIndex: 50, display: "flex", justifyContent: "flex-end" }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: 460, background: "white", height: "100vh", overflowY: "auto", boxShadow: "-8px 0 32px rgba(0,0,0,0.12)", fontFamily: FONT }}>
-        <div style={{ padding: "18px 22px", borderBottom: "1px solid #ECECEE", position: "sticky", top: 0, background: "white", zIndex: 2 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#9CA3AF", letterSpacing: 0.5 }}>{row.id}</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 5 }}>
-                <CargoTag tipo={row.tipo} />
-                <span style={{ fontSize: 16, fontWeight: 700, color: "#0F4F47" }}>{row.concepto}</span>
-              </div>
-              <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4 }}>{row.receptor.razon} · {row.espacio}</div>
-              <div style={{ marginTop: 8 }}><ContractLink id={row.contractId} /></div>
-            </div>
-            <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid #E5E7EB", background: "white", fontSize: 14, color: "#9CA3AF", cursor: "pointer" }}>✕</button>
-          </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
-            <PreChip state={row.pre} />
-            <StampChip state={row.stamp} />
-            <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 5, background: row.metodoPago === "PPD" ? "#F5F3FF" : "#F0FDFA", color: row.metodoPago === "PPD" ? "#5B21B6" : "#0F766E" }}>{row.metodoPago}</span>
-          </div>
-        </div>
-
-        <div style={{ padding: "16px 22px", background: "#FAFAFB", borderBottom: "1px solid #ECECEE" }}>
-          {row.descripcion && <div style={{ fontSize: 11, color: "#6B7280", fontStyle: "italic", marginBottom: 10 }}>{row.descripcion}</div>}
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#374151", marginBottom: 5 }}><span>Subtotal · periodo {row.periodo}</span><span style={{ fontWeight: 600 }}>{$f(t.subtotal)}</span></div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#374151", marginBottom: 5 }}><span>IVA 16%</span><span style={{ fontWeight: 600 }}>{$f(t.iva)}</span></div>
-          {t.aplicaRet && <>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#B45309", marginBottom: 5 }}><span>Ret. IVA (2/3)</span><span style={{ fontWeight: 600 }}>− {$f(t.retIva)}</span></div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#B45309", marginBottom: 5 }}><span>Ret. ISR (10%)</span><span style={{ fontWeight: 600 }}>− {$f(t.retIsr)}</span></div>
-          </>}
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, color: "#0F4F47", fontWeight: 800, marginTop: 8, paddingTop: 8, borderTop: "1px solid #E5E7EB" }}><span>Total CFDI</span><span>{$f(t.total)}</span></div>
-        </div>
-
-        <div style={{ padding: "18px 22px" }}>
-          {row.pre === "blocked" && (
-            <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 9, padding: "10px 12px", marginBottom: 16, display: "flex", gap: 8 }}>
-              <span style={{ fontSize: 14 }}>⚠</span>
-              <div style={{ fontSize: 11, color: "#991B1B", lineHeight: 1.5 }}>{row.notas}</div>
-            </div>
-          )}
-
-          <SectionTitle>Concepto</SectionTitle>
-          <Field label="Concepto" value={row.concepto} src="contrato" />
-          <Field label="Clave producto/servicio" value={cc.clave} src="sistema" />
-          <Field label="Clave unidad" value="E48 · Unidad de servicio" src="sistema" />
-          <Field label="Efecto / tipo de comprobante" value={row.efecto} src="editable" editable options={["I · Ingreso", "E · Egreso (nota crédito)", "P · Pago"]} onChange={(v) => onUpdate({ efecto: v })} />
-
-          <SectionTitle>Receptor</SectionTitle>
-          <Field label="Razón social receptora" value={row.receptor.razon} src="contrato" />
-          <Field label="RFC" value={row.receptor.rfc} src="contrato" />
-          <Field label="Régimen fiscal" value={row.receptor.regimen} src="contrato" />
-          <Field label="Código postal" value={row.receptor.cp} src="csf" warn={!row.receptor.csfOk} />
-          <Field label="Uso de CFDI" value={row.usoCfdi} src="editable" editable options={["G01 · Adquisición de mercancías", "G03 · Gastos en general", "P01 · Por definir"]} onChange={(v) => onUpdate({ usoCfdi: v })} />
-
-          <SectionTitle>Emisor</SectionTitle>
-          <Field label="Razón social que emite" value={row.emisor.razon} src="contrato" />
-          <Field label="RFC emisor" value={row.emisor.rfc} src="contrato" />
-          <Field label="Régimen emisor" value={row.emisor.regimen} src="contrato" />
-
-          <SectionTitle>Pago e impuestos</SectionTitle>
-          <Field label="Método de pago" value={row.metodoPago} src="editable" editable options={["PUE", "PPD"]} onChange={(v) => onUpdate({ metodoPago: v })} />
-          <Field label="Forma de pago" value={row.formaPago} src="editable" editable options={["01 · Efectivo", "03 · Transferencia", "99 · Por definir"]} onChange={(v) => onUpdate({ formaPago: v })} />
-          <Field label="Moneda" value={row.moneda} src="contrato" />
-          {row.moneda === "USD" && <Field label="Tipo de cambio (Banxico)" value={row.tc || "—"} src="sistema" />}
-          <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2, marginBottom: 12 }}>{row.tipoEmisor}→{row.tipoReceptor} · {t.aplicaRet ? "PF emite a PM: retención automática" : "Sin retención"}</div>
-
-          <SectionTitle>Nota / excepción</SectionTitle>
-          <textarea value={row.notas} onChange={(e) => onUpdate({ notas: e.target.value })} placeholder="Agregar nota, condonación o excepción..." style={{ width: "100%", minHeight: 60, padding: "8px 10px", border: "1.5px solid #99F6E4", borderRadius: 8, fontSize: 12, fontFamily: FONT, outline: "none", background: "#F0FDFA", color: "#134E4A", resize: "vertical", boxSizing: "border-box" }} />
-        </div>
-
-        <div style={{ position: "sticky", bottom: 0, background: "white", borderTop: "1px solid #ECECEE", padding: "14px 22px", display: "flex", gap: 10 }}>
-          <button onClick={() => onToggleExclude(row.id)} style={{ flex: 1, padding: "10px", borderRadius: 8, border: "1px solid #E5E7EB", background: "white", fontSize: 12, fontWeight: 600, color: row.excluded ? "#0F766E" : "#6B7280", cursor: "pointer", fontFamily: FONT }}>
-            {row.excluded ? "↻ Reincluir en emisión" : "⊘ No emitir este cargo"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    onClick: onClose,
+    style: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(15,23,42,0.25)",
+      zIndex: 50,
+      display: "flex",
+      justifyContent: "flex-end"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
+    style: {
+      width: 460,
+      background: "white",
+      height: "100vh",
+      overflowY: "auto",
+      boxShadow: "-8px 0 32px rgba(0,0,0,0.12)",
+      fontFamily: FONT
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "18px 22px",
+      borderBottom: "1px solid #ECECEE",
+      position: "sticky",
+      top: 0,
+      background: "white",
+      zIndex: 2
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      fontWeight: 700,
+      color: "#9CA3AF",
+      letterSpacing: 0.5
+    }
+  }, row.id), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 5
+    }
+  }, /*#__PURE__*/React.createElement(CargoTag, {
+    tipo: row.tipo
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 16,
+      fontWeight: 700,
+      color: "#0F4F47"
+    }
+  }, row.concepto)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#6B7280",
+      marginTop: 4
+    }
+  }, row.receptor.razon, " · ", row.espacio), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement(ContractLink, {
+    id: row.contractId
+  }))), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    style: {
+      width: 28,
+      height: 28,
+      borderRadius: 7,
+      border: "1px solid #E5E7EB",
+      background: "white",
+      fontSize: 14,
+      color: "#9CA3AF",
+      cursor: "pointer"
+    }
+  }, "✕")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 12,
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement(PreChip, {
+    state: row.pre
+  }), /*#__PURE__*/React.createElement(StampChip, {
+    state: row.stamp
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      fontWeight: 700,
+      padding: "2px 7px",
+      borderRadius: 5,
+      background: row.metodoPago === "PPD" ? "#F5F3FF" : "#F0FDFA",
+      color: row.metodoPago === "PPD" ? "#5B21B6" : "#0F766E"
+    }
+  }, row.metodoPago))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "16px 22px",
+      background: "#FAFAFB",
+      borderBottom: "1px solid #ECECEE"
+    }
+  }, row.descripcion && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#6B7280",
+      fontStyle: "italic",
+      marginBottom: 10
+    }
+  }, row.descripcion), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 12,
+      color: "#374151",
+      marginBottom: 5
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "Subtotal · periodo ", row.periodo), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 600
+    }
+  }, $f(t.subtotal))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 12,
+      color: "#374151",
+      marginBottom: 5
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "IVA 16%"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 600
+    }
+  }, $f(t.iva))), t.aplicaRet && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 12,
+      color: "#B45309",
+      marginBottom: 5
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "Ret. IVA (2/3)"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 600
+    }
+  }, "− ", $f(t.retIva))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 12,
+      color: "#B45309",
+      marginBottom: 5
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "Ret. ISR (10%)"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 600
+    }
+  }, "− ", $f(t.retIsr)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 15,
+      color: "#0F4F47",
+      fontWeight: 800,
+      marginTop: 8,
+      paddingTop: 8,
+      borderTop: "1px solid #E5E7EB"
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "Total CFDI"), /*#__PURE__*/React.createElement("span", null, $f(t.total)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "18px 22px"
+    }
+  }, row.pre === "blocked" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#FEF2F2",
+      border: "1px solid #FECACA",
+      borderRadius: 9,
+      padding: "10px 12px",
+      marginBottom: 16,
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14
+    }
+  }, "⚠"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#991B1B",
+      lineHeight: 1.5
+    }
+  }, row.notas)), /*#__PURE__*/React.createElement(SectionTitle, null, "Concepto"), /*#__PURE__*/React.createElement(Field, {
+    label: "Concepto",
+    value: row.concepto,
+    src: "contrato"
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "Clave producto/servicio",
+    value: cc.clave,
+    src: "sistema"
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "Clave unidad",
+    value: "E48 · Unidad de servicio",
+    src: "sistema"
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "Efecto / tipo de comprobante",
+    value: row.efecto,
+    src: "editable",
+    editable: true,
+    options: ["I · Ingreso", "E · Egreso (nota crédito)", "P · Pago"],
+    onChange: v => onUpdate({
+      efecto: v
+    })
+  }), /*#__PURE__*/React.createElement(SectionTitle, null, "Receptor"), /*#__PURE__*/React.createElement(Field, {
+    label: "Razón social receptora",
+    value: row.receptor.razon,
+    src: "contrato"
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "RFC",
+    value: row.receptor.rfc,
+    src: "contrato"
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "Régimen fiscal",
+    value: row.receptor.regimen,
+    src: "contrato"
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "Código postal",
+    value: row.receptor.cp,
+    src: "csf",
+    warn: !row.receptor.csfOk
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "Uso de CFDI",
+    value: row.usoCfdi,
+    src: "editable",
+    editable: true,
+    options: ["G01 · Adquisición de mercancías", "G03 · Gastos en general", "P01 · Por definir"],
+    onChange: v => onUpdate({
+      usoCfdi: v
+    })
+  }), /*#__PURE__*/React.createElement(SectionTitle, null, "Emisor"), /*#__PURE__*/React.createElement(Field, {
+    label: "Razón social que emite",
+    value: row.emisor.razon,
+    src: "contrato"
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "RFC emisor",
+    value: row.emisor.rfc,
+    src: "contrato"
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "Régimen emisor",
+    value: row.emisor.regimen,
+    src: "contrato"
+  }), /*#__PURE__*/React.createElement(SectionTitle, null, "Pago e impuestos"), /*#__PURE__*/React.createElement(Field, {
+    label: "Método de pago",
+    value: row.metodoPago,
+    src: "editable",
+    editable: true,
+    options: ["PUE", "PPD"],
+    onChange: v => onUpdate({
+      metodoPago: v
+    })
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "Forma de pago",
+    value: row.formaPago,
+    src: "editable",
+    editable: true,
+    options: ["01 · Efectivo", "03 · Transferencia", "99 · Por definir"],
+    onChange: v => onUpdate({
+      formaPago: v
+    })
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "Moneda",
+    value: row.moneda,
+    src: "contrato"
+  }), row.moneda === "USD" && /*#__PURE__*/React.createElement(Field, {
+    label: "Tipo de cambio (Banxico)",
+    value: row.tc || "—",
+    src: "sistema"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#9CA3AF",
+      marginTop: 2,
+      marginBottom: 12
+    }
+  }, row.tipoEmisor, "→", row.tipoReceptor, " · ", t.aplicaRet ? "PF emite a PM: retención automática" : "Sin retención"), /*#__PURE__*/React.createElement(SectionTitle, null, "Nota / excepción"), /*#__PURE__*/React.createElement("textarea", {
+    value: row.notas,
+    onChange: e => onUpdate({
+      notas: e.target.value
+    }),
+    placeholder: "Agregar nota, condonación o excepción...",
+    style: {
+      width: "100%",
+      minHeight: 60,
+      padding: "8px 10px",
+      border: "1.5px solid #99F6E4",
+      borderRadius: 8,
+      fontSize: 12,
+      fontFamily: FONT,
+      outline: "none",
+      background: "#F0FDFA",
+      color: "#134E4A",
+      resize: "vertical",
+      boxSizing: "border-box"
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "sticky",
+      bottom: 0,
+      background: "white",
+      borderTop: "1px solid #ECECEE",
+      padding: "14px 22px",
+      display: "flex",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => onToggleExclude(row.id),
+    style: {
+      flex: 1,
+      padding: "10px",
+      borderRadius: 8,
+      border: "1px solid #E5E7EB",
+      background: "white",
+      fontSize: 12,
+      fontWeight: 600,
+      color: row.excluded ? "#0F766E" : "#6B7280",
+      cursor: "pointer",
+      fontFamily: FONT
+    }
+  }, row.excluded ? "↻ Reincluir en emisión" : "⊘ No emitir este cargo"))));
 }
 
 // Grid: ck | concepto+tag | receptor | espacio | contrato | total | mét | estado | emisión
 const G = "32px 1.5fr 1.2fr 1fr 130px 110px 56px 100px 92px";
-
-export default function VistaPrefacturacion() {
+function VistaPrefacturacion() {
   const [rows, setRows] = useState(INIT);
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState("all");
-
-  const toggleExclude = (id) => setRows((rs) => rs.map((r) => r.id === id ? { ...r, excluded: !r.excluded, pre: !r.excluded ? "excluded" : "ready" } : r));
+  const toggleExclude = id => setRows(rs => rs.map(r => r.id === id ? {
+    ...r,
+    excluded: !r.excluded,
+    pre: !r.excluded ? "excluded" : "ready"
+  } : r));
   const updateRow = (id, patch) => {
-    setRows((rs) => rs.map((r) => r.id === id ? { ...r, ...patch } : r));
-    setSelected((s) => s && s.id === id ? { ...s, ...patch } : s);
+    setRows(rs => rs.map(r => r.id === id ? {
+      ...r,
+      ...patch
+    } : r));
+    setSelected(s => s && s.id === id ? {
+      ...s,
+      ...patch
+    } : s);
   };
-
   const filtered = useMemo(() => {
-    if (filter === "emit") return rows.filter((r) => !r.excluded && r.pre !== "blocked");
-    if (filter === "review") return rows.filter((r) => r.pre === "review" || r.pre === "blocked");
-    if (filter === "excluded") return rows.filter((r) => r.excluded);
+    if (filter === "emit") return rows.filter(r => !r.excluded && r.pre !== "blocked");
+    if (filter === "review") return rows.filter(r => r.pre === "review" || r.pre === "blocked");
+    if (filter === "excluded") return rows.filter(r => r.excluded);
     return rows;
   }, [rows, filter]);
-
   const stats = useMemo(() => {
-    const toEmit = rows.filter((r) => !r.excluded && r.pre !== "blocked");
+    const toEmit = rows.filter(r => !r.excluded && r.pre !== "blocked");
     return {
-      total: rows.length, emit: toEmit.length,
-      blocked: rows.filter((r) => r.pre === "blocked").length,
-      excluded: rows.filter((r) => r.excluded).length,
-      monto: toEmit.reduce((a, r) => a + computeTotals(r).total, 0),
+      total: rows.length,
+      emit: toEmit.length,
+      blocked: rows.filter(r => r.pre === "blocked").length,
+      excluded: rows.filter(r => r.excluded).length,
+      monto: toEmit.reduce((a, r) => a + computeTotals(r).total, 0)
     };
   }, [rows]);
-
-  return (
-    <div style={{ fontFamily: FONT, background: "#FAFAFB", minHeight: "100vh", padding: "24px 28px", color: "#1F2937" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 6 }}>
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "#14B8A6", letterSpacing: 0.5, textTransform: "uppercase" }}>Cobranza · Facturación</div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: "#0F4F47", margin: "4px 0 0" }}>Prefacturación</h1>
-          <div style={{ fontSize: 12, color: "#6B7280", marginTop: 3 }}>1 cargo = 1 factura · emisión programada para hoy, 18 jun 2026</div>
-        </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 600 }}>TOTAL A EMITIR</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: "#0F4F47" }}>{$f(stats.monto)}</div>
-          </div>
-          <button style={{ padding: "11px 20px", borderRadius: 9, border: "none", background: "#115E59", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: FONT, boxShadow: "0 1px 2px rgba(0,0,0,0.08)" }}>
-            Emitir {stats.emit} CFDI →
-          </button>
-        </div>
-      </div>
-
-      <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 9, padding: "9px 14px", margin: "16px 0", display: "flex", alignItems: "center", gap: 8, fontSize: 11.5, color: "#1D4ED8" }}>
-        <span style={{ fontSize: 13 }}>🔔</span>
-        Notificación enviada ayer (día x-1). Tienes hasta hoy para revisar, editar o excluir cargos antes del timbrado automático.
-      </div>
-
-      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-        {[["all", `Todos ${stats.total}`], ["emit", `Por emitir ${stats.emit}`], ["review", `Revisar ${stats.blocked}`], ["excluded", `No se emiten ${stats.excluded}`]].map(([k, l]) => (
-          <button key={k} onClick={() => setFilter(k)} style={{ padding: "6px 13px", borderRadius: 8, border: filter === k ? "1.5px solid #14B8A6" : "1px solid #E5E7EB", background: filter === k ? "#F0FDFA" : "white", fontSize: 11.5, fontWeight: 600, color: filter === k ? "#0F766E" : "#6B7280", cursor: "pointer", fontFamily: FONT }}>{l}</button>
-        ))}
-      </div>
-
-      <div style={{ background: "white", borderRadius: 12, border: "1px solid #ECECEE", overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: G, padding: "11px 18px", borderBottom: "1px solid #ECECEE", background: "#FAFAFB" }}>
-          {["", "Concepto", "Receptor", "Espacio", "Contrato", "Total", "Mét.", "Estado", "Emisión"].map((h, i) => (
-            <div key={i} style={{ fontSize: 9.5, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: 0.4 }}>{h}</div>
-          ))}
-        </div>
-
-        {filtered.map((r) => {
-          const t = computeTotals(r);
-          return (
-            <div key={r.id} onClick={() => setSelected(r)} style={{ display: "grid", gridTemplateColumns: G, padding: "12px 18px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", opacity: r.excluded ? 0.5 : 1 }} onMouseEnter={(e) => e.currentTarget.style.background = "#FAFAFB"} onMouseLeave={(e) => e.currentTarget.style.background = "white"}>
-              <div onClick={(e) => { e.stopPropagation(); toggleExclude(r.id); }}>
-                <div style={{ width: 17, height: 17, borderRadius: 5, border: r.excluded ? "1.5px solid #D1D5DB" : "1.5px solid #14B8A6", background: r.excluded ? "white" : "#14B8A6", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                  {!r.excluded && <span style={{ color: "white", fontSize: 11, fontWeight: 800 }}>✓</span>}
-                </div>
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ marginBottom: 3 }}><CargoTag tipo={r.tipo} /></div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#1F2937", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.concepto}</div>
-                <div style={{ fontSize: 9.5, color: "#9CA3AF" }}>{r.periodo}</div>
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 500, color: "#374151", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.receptor.razon}</div>
-                <div style={{ fontSize: 9.5, color: "#9CA3AF", fontFamily: "monospace" }}>{r.receptor.rfc}</div>
-              </div>
-              <div style={{ fontSize: 11, color: "#6B7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.espacio}</div>
-              <div><ContractLink id={r.contractId} small /></div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#0F4F47" }}>{$f(t.total)}</div>
-              <div><span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 5, background: r.metodoPago === "PPD" ? "#F5F3FF" : "#F0FDFA", color: r.metodoPago === "PPD" ? "#5B21B6" : "#0F766E" }}>{r.metodoPago}</span></div>
-              <div><PreChip state={r.pre} /></div>
-              <div><StampChip state={r.stamp} /></div>
-            </div>
-          );
-        })}
-        {filtered.length === 0 && <div style={{ padding: 40, textAlign: "center", fontSize: 12, color: "#9CA3AF" }}>Sin cargos en este filtro</div>}
-      </div>
-
-      <div style={{ display: "flex", gap: 14, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase" }}>Origen del dato:</span>
-        {Object.keys(SRC).map((k) => <Badge key={k} src={k} small />)}
-        <span style={{ fontSize: 10, color: "#9CA3AF", marginLeft: "auto" }}>Cada cargo es un CFDI · click en fila para detalle y edición</span>
-      </div>
-
-      {selected && <DetailPanel row={rows.find((r) => r.id === selected.id)} onClose={() => setSelected(null)} onUpdate={(patch) => updateRow(selected.id, patch)} onToggleExclude={toggleExclude} />}
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: FONT,
+      background: "#FAFAFB",
+      minHeight: "100vh",
+      padding: "24px 28px",
+      color: "#1F2937"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-end",
+      marginBottom: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 600,
+      color: "#14B8A6",
+      letterSpacing: 0.5,
+      textTransform: "uppercase"
+    }
+  }, "Cobranza · Facturación"), /*#__PURE__*/React.createElement("h1", {
+    style: {
+      fontSize: 24,
+      fontWeight: 700,
+      color: "#0F4F47",
+      margin: "4px 0 0"
+    }
+  }, "Prefacturación"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#6B7280",
+      marginTop: 3
+    }
+  }, "1 cargo = 1 factura · emisión programada para hoy, 18 jun 2026")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "right"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#9CA3AF",
+      fontWeight: 600
+    }
+  }, "TOTAL A EMITIR"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 20,
+      fontWeight: 800,
+      color: "#0F4F47"
+    }
+  }, $f(stats.monto))), /*#__PURE__*/React.createElement("button", {
+    style: {
+      padding: "11px 20px",
+      borderRadius: 9,
+      border: "none",
+      background: "#115E59",
+      color: "white",
+      fontSize: 13,
+      fontWeight: 700,
+      cursor: "pointer",
+      fontFamily: FONT,
+      boxShadow: "0 1px 2px rgba(0,0,0,0.08)"
+    }
+  }, "Emitir ", stats.emit, " CFDI →"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#EFF6FF",
+      border: "1px solid #BFDBFE",
+      borderRadius: 9,
+      padding: "9px 14px",
+      margin: "16px 0",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      fontSize: 11.5,
+      color: "#1D4ED8"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13
+    }
+  }, "🔔"), "Notificación enviada ayer (día x-1). Tienes hasta hoy para revisar, editar o excluir cargos antes del timbrado automático."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 12,
+      flexWrap: "wrap"
+    }
+  }, [["all", `Todos ${stats.total}`], ["emit", `Por emitir ${stats.emit}`], ["review", `Revisar ${stats.blocked}`], ["excluded", `No se emiten ${stats.excluded}`]].map(([k, l]) => /*#__PURE__*/React.createElement("button", {
+    key: k,
+    onClick: () => setFilter(k),
+    style: {
+      padding: "6px 13px",
+      borderRadius: 8,
+      border: filter === k ? "1.5px solid #14B8A6" : "1px solid #E5E7EB",
+      background: filter === k ? "#F0FDFA" : "white",
+      fontSize: 11.5,
+      fontWeight: 600,
+      color: filter === k ? "#0F766E" : "#6B7280",
+      cursor: "pointer",
+      fontFamily: FONT
+    }
+  }, l))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "white",
+      borderRadius: 12,
+      border: "1px solid #ECECEE",
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: G,
+      padding: "11px 18px",
+      borderBottom: "1px solid #ECECEE",
+      background: "#FAFAFB"
+    }
+  }, ["", "Concepto", "Receptor", "Espacio", "Contrato", "Total", "Mét.", "Estado", "Emisión"].map((h, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      fontSize: 9.5,
+      fontWeight: 700,
+      color: "#9CA3AF",
+      textTransform: "uppercase",
+      letterSpacing: 0.4
+    }
+  }, h))), filtered.map(r => {
+    const t = computeTotals(r);
+    return /*#__PURE__*/React.createElement("div", {
+      key: r.id,
+      onClick: () => setSelected(r),
+      style: {
+        display: "grid",
+        gridTemplateColumns: G,
+        padding: "12px 18px",
+        borderBottom: "1px solid #F3F4F6",
+        alignItems: "center",
+        cursor: "pointer",
+        opacity: r.excluded ? 0.5 : 1
+      },
+      onMouseEnter: e => e.currentTarget.style.background = "#FAFAFB",
+      onMouseLeave: e => e.currentTarget.style.background = "white"
+    }, /*#__PURE__*/React.createElement("div", {
+      onClick: e => {
+        e.stopPropagation();
+        toggleExclude(r.id);
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 17,
+        height: 17,
+        borderRadius: 5,
+        border: r.excluded ? "1.5px solid #D1D5DB" : "1.5px solid #14B8A6",
+        background: r.excluded ? "white" : "#14B8A6",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer"
+      }
+    }, !r.excluded && /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "white",
+        fontSize: 11,
+        fontWeight: 800
+      }
+    }, "✓"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 3
+      }
+    }, /*#__PURE__*/React.createElement(CargoTag, {
+      tipo: r.tipo
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        fontWeight: 600,
+        color: "#1F2937",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis"
+      }
+    }, r.concepto), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9.5,
+        color: "#9CA3AF"
+      }
+    }, r.periodo)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        fontWeight: 500,
+        color: "#374151",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis"
+      }
+    }, r.receptor.razon), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9.5,
+        color: "#9CA3AF",
+        fontFamily: "monospace"
+      }
+    }, r.receptor.rfc)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#6B7280",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis"
+      }
+    }, r.espacio), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(ContractLink, {
+      id: r.contractId,
+      small: true
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        fontWeight: 700,
+        color: "#0F4F47"
+      }
+    }, $f(t.total)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        fontWeight: 700,
+        padding: "2px 6px",
+        borderRadius: 5,
+        background: r.metodoPago === "PPD" ? "#F5F3FF" : "#F0FDFA",
+        color: r.metodoPago === "PPD" ? "#5B21B6" : "#0F766E"
+      }
+    }, r.metodoPago)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(PreChip, {
+      state: r.pre
+    })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(StampChip, {
+      state: r.stamp
+    })));
+  }), filtered.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 40,
+      textAlign: "center",
+      fontSize: 12,
+      color: "#9CA3AF"
+    }
+  }, "Sin cargos en este filtro")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 14,
+      marginTop: 14,
+      flexWrap: "wrap",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      fontWeight: 700,
+      color: "#9CA3AF",
+      textTransform: "uppercase"
+    }
+  }, "Origen del dato:"), Object.keys(SRC).map(k => /*#__PURE__*/React.createElement(Badge, {
+    key: k,
+    src: k,
+    small: true
+  })), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: "#9CA3AF",
+      marginLeft: "auto"
+    }
+  }, "Cada cargo es un CFDI · click en fila para detalle y edición")), selected && /*#__PURE__*/React.createElement(DetailPanel, {
+    row: rows.find(r => r.id === selected.id),
+    onClose: () => setSelected(null),
+    onUpdate: patch => updateRow(selected.id, patch),
+    onToggleExclude: toggleExclude
+  }));
 }
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(VistaPrefacturacion));
+</script>
+</body>
+</html>
